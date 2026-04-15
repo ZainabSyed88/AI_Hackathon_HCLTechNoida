@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sanket.AI — Sarvam AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <div class="logo">🛡️</div>
+            <div>
+                <h1>Sanket.AI</h1>
+                <p class="subtitle">AI-Powered National Security & Civilian Intelligence Platform</p>
+            </div>
+        </div>
+        <div class="header-right">
+            <select id="languageSelect" class="lang-select">
+                <option value="en-IN">English</option>
+                <option value="hi-IN">हिन्दी (Hindi)</option>
+                <option value="bn-IN">বাংলা (Bengali)</option>
+                <option value="ta-IN">தமிழ் (Tamil)</option>
+                <option value="te-IN">తెలుగు (Telugu)</option>
+                <option value="mr-IN">मराठी (Marathi)</option>
+                <option value="gu-IN">ગુજરાતી (Gujarati)</option>
+                <option value="kn-IN">ಕನ್ನಡ (Kannada)</option>
+                <option value="ml-IN">മലയാളം (Malayalam)</option>
+                <option value="pa-IN">ਪੰਜਾਬੀ (Punjabi)</option>
+                <option value="od-IN">ଓଡ଼ିଆ (Odia)</option>
+                <option value="as-IN">অসমীয়া (Assamese)</option>
+                <option value="ur-IN">اردو (Urdu)</option>
+                <option value="mai-IN">मैथिली (Maithili)</option>
+                <option value="sa-IN">संस्कृतम् (Sanskrit)</option>
+                <option value="ne-IN">नेपाली (Nepali)</option>
+                <option value="sd-IN">سنڌي (Sindhi)</option>
+                <option value="ks-IN">كٲشُر (Kashmiri)</option>
+                <option value="doi-IN">डोगरी (Dogri)</option>
+                <option value="kok-IN">कोंकणी (Konkani)</option>
+                <option value="mni-IN">মৈতৈলোন্ (Manipuri)</option>
+                <option value="sat-IN">ᱥᱟᱱᱛᱟᱲᱤ (Santali)</option>
+                <option value="bo-IN">བོད་སྐད (Bodo)</option>
+            </select>
+            <span class="status-badge" id="systemStatus"><span class="status-dot"></span> System Online</span>
+        </div>
+    </header>
+
+    <div class="app-layout">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-nav">
+                <button class="nav-item active" data-dashboard="alerts" onclick="switchDashboard('alerts')">
+                    <span class="nav-icon">🚨</span>
+                    <span class="nav-label">Alerts</span>
+                </button>
+                <button class="nav-item" data-dashboard="intelligence" onclick="switchDashboard('intelligence')">
+                    <span class="nav-icon">💬</span>
+                    <span class="nav-label">Intelligence</span>
+                </button>
+                <button class="nav-item" data-dashboard="map-view" onclick="switchDashboard('map-view')">
+                    <span class="nav-icon">🗺️</span>
+                    <span class="nav-label">Map</span>
+                </button>
+                <button class="nav-item" data-dashboard="analytics" onclick="switchDashboard('analytics')">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-label">Analytics</span>
+                </button>
+                <button class="nav-item" data-dashboard="emergency" onclick="switchDashboard('emergency')">
+                    <span class="nav-icon">🆘</span>
+                    <span class="nav-label">Emergency</span>
+                </button>
+                <button class="nav-item" data-dashboard="agriculture" onclick="switchDashboard('agriculture')">
+                    <span class="nav-icon">🌾</span>
+                    <span class="nav-label">Agri</span>
+                </button>
+                <button class="nav-item" data-dashboard="health" onclick="switchDashboard('health')">
+                    <span class="nav-icon">🏥</span>
+                    <span class="nav-label">Health</span>
+                </button>
+                <button class="nav-item" data-dashboard="weather" onclick="switchDashboard('weather')">
+                    <span class="nav-icon">🌦️</span>
+                    <span class="nav-label">Weather</span>
+                </button>
+                <button class="nav-item" data-dashboard="weather-reco" onclick="switchDashboard('weather-reco')">
+                    <span class="nav-icon">📡</span>
+                    <span class="nav-label">Forecast</span>
+                </button>
+                <button class="nav-item" data-dashboard="incidents" onclick="switchDashboard('incidents')">
+                    <span class="nav-icon">📋</span>
+                    <span class="nav-label">Incidents</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Dashboard Content Area -->
+        <main class="dashboard-content">
+
+            <!-- ===================== DASHBOARD 1: ALERTS ===================== -->
+            <div id="dashboard-alerts" class="dashboard-page active">
+                <!-- Top Stats Bar -->
+                <div class="alerts-stats-bar">
+                    <div class="alert-stat critical-stat">
+                        <span class="alert-stat-count" id="criticalCount">0</span>
+                        <span class="alert-stat-label">Critical</span>
+                    </div>
+                    <div class="alert-stat high-stat">
+                        <span class="alert-stat-count" id="highCount">0</span>
+                        <span class="alert-stat-label">High</span>
+                    </div>
+                    <div class="alert-stat moderate-stat">
+                        <span class="alert-stat-count" id="moderateCount">0</span>
+                        <span class="alert-stat-label">Moderate</span>
+                    </div>
+                    <div class="alert-stat low-stat">
+                        <span class="alert-stat-count" id="lowCount">0</span>
+                        <span class="alert-stat-label">Low</span>
+                    </div>
+                    <div class="alert-stat total-stat">
+                        <span class="alert-stat-count" id="totalAlertCount">0</span>
+                        <span class="alert-stat-label">Total Active</span>
+                    </div>
+                </div>
+
+                <div class="alerts-grid">
+                    <!-- Left: Alert List + Filters -->
+                    <div class="alerts-left">
+                        <section class="card">
+                            <div class="card-header">
+                                <h2>⚠️ Live Alerts Feed</h2>
+                                <div class="alert-actions-top">
+                                    <select id="alertTypeFilter" class="filter-select" onchange="filterAlerts()">
+                                        <option value="all">All Types</option>
+                                        <option value="protest">Protests</option>
+                                        <option value="civil_unrest">Civil Unrest</option>
+                                        <option value="security_threat">Security Threat</option>
+                                        <option value="disaster">Disaster</option>
+                                        <option value="health">Health</option>
+                                        <option value="agriculture">Agriculture</option>
+                                    </select>
+                                    <select id="alertSeverityFilter" class="filter-select" onchange="filterAlerts()">
+                                        <option value="all">All Severity</option>
+                                        <option value="CRITICAL">Critical</option>
+                                        <option value="HIGH">High</option>
+                                        <option value="MODERATE">Moderate</option>
+                                        <option value="LOW">Low</option>
+                                    </select>
+                                    <button class="btn btn-sm btn-primary" onclick="runAlertCheck()">🔄 Scan Now</button>
+                                </div>
+                            </div>
+                            <div id="alertsList" class="alerts-list">
+                                <p class="muted">Loading alerts...</p>
+                            </div>
+                        </section>
+                    </div>
+
+                    <!-- Right: Alert Map + Quick Actions -->
+                    <div class="alerts-right">
+                        <!-- Alert Map -->
+                        <section class="card">
+                            <h2>🗺️ Threat Map — Live Locations</h2>
+                            <div id="alertsMap" class="map-container map-large"></div>
+                        </section>
+
+                        <!-- Emergency Quick Actions -->
+                        <section class="card emergency-actions-card">
+                            <h2>📢 Notify Citizens</h2>
+                            <p class="muted" style="margin-bottom:12px;">Send emergency alerts to affected regions</p>
+                            <div class="emergency-actions-grid">
+                                <button class="btn btn-emergency btn-sms" onclick="sendEmergencyNotification('sms')">
+                                    <span class="emergency-icon">📱</span>
+                                    <span>Send SMS Alert</span>
+                                </button>
+                                <button class="btn btn-emergency btn-whatsapp" onclick="sendEmergencyNotification('whatsapp')">
+                                    <span class="emergency-icon">💬</span>
+                                    <span>WhatsApp Broadcast</span>
+                                </button>
+                                <button class="btn btn-emergency btn-call" onclick="sendEmergencyNotification('call')">
+                                    <span class="emergency-icon">📞</span>
+                                    <span>Emergency Call</span>
+                                </button>
+                                <button class="btn btn-emergency btn-siren" onclick="sendEmergencyNotification('all')">
+                                    <span class="emergency-icon">🚨</span>
+                                    <span>Alert All Channels</span>
+                                </button>
+                            </div>
+                        </section>
+
+                        <!-- Notification Log -->
+                        <section class="card">
+                            <h2>📋 Notification Log</h2>
+                            <div id="notificationLog" class="notification-log">
+                                <p class="muted">No notifications sent yet.</p>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+
+                <!-- ============ LIVE EVENTS INTELLIGENCE FEED ============ -->
+                <section class="card live-events-section">
+                    <div class="live-events-header">
+                        <div>
+                            <h2>🔴 Live Events Intelligence — India Situation Monitor</h2>
+                            <p class="muted">Real-time tracking of protests, wars, pandemics, strikes, disasters, and unrest across states</p>
+                        </div>
+                        <div class="live-events-filters">
+                            <select id="liveEvtTypeFilter" class="filter-select" onchange="filterLiveEvents()">
+                                <option value="all">All Types</option>
+                                <option value="protest">✊ Protests</option>
+                                <option value="war">⚔️ War / Border</option>
+                                <option value="pandemic">🦠 Pandemic</option>
+                                <option value="civil_unrest">🔥 Civil Unrest</option>
+                                <option value="strike">🚛 Strike / Bandh</option>
+                                <option value="disaster">🌊 Disaster</option>
+                                <option value="naxal">🎯 Naxal / Insurgency</option>
+                            </select>
+                            <select id="liveEvtSeverityFilter" class="filter-select" onchange="filterLiveEvents()">
+                                <option value="all">All Severity</option>
+                                <option value="CRITICAL">🔴 Critical</option>
+                                <option value="HIGH">🟠 High</option>
+                                <option value="MODERATE">🟡 Moderate</option>
+                            </select>
+                            <div class="live-pulse-indicator"><span class="live-dot"></span> LIVE</div>
+                        </div>
+                    </div>
+                    <!-- Live Events Stats Strip -->
+                    <div class="live-events-stats">
+                        <div class="le-stat"><span id="leStatTotal" class="le-val">--</span><span class="le-lbl">Active Events</span></div>
+                        <div class="le-stat critical"><span id="leStatCritical" class="le-val">--</span><span class="le-lbl">Critical</span></div>
+                        <div class="le-stat escalating"><span id="leStatEscalating" class="le-val">--</span><span class="le-lbl">Escalating</span></div>
+                        <div class="le-stat"><span id="leStatProtests" class="le-val">--</span><span class="le-lbl">Protests</span></div>
+                        <div class="le-stat"><span id="leStatSecurity" class="le-val">--</span><span class="le-lbl">Security</span></div>
+                        <div class="le-stat"><span id="leStatHealth" class="le-val">--</span><span class="le-lbl">Health</span></div>
+                    </div>
+                    <!-- Events Feed -->
+                    <div id="liveEventsFeed" class="live-events-feed">
+                        <p class="muted">Loading live events...</p>
+                    </div>
+                </section>
+
+                <!-- Alert Detail Modal -->
+                <div id="alertDetailModal" class="modal hidden">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2 id="modalAlertTitle">Alert Details</h2>
+                            <button class="btn btn-sm" onclick="closeAlertModal()">✕</button>
+                        </div>
+                        <div id="modalAlertBody" class="modal-body"></div>
+                        <div class="modal-footer">
+                            <button class="btn btn-sm" onclick="acknowledgeAlertFromModal()">✅ Acknowledge</button>
+                            <button class="btn btn-sm btn-sms" onclick="notifyFromModal('sms')">📱 SMS</button>
+                            <button class="btn btn-sm btn-whatsapp" onclick="notifyFromModal('whatsapp')">💬 WhatsApp</button>
+                            <button class="btn btn-sm btn-call" onclick="notifyFromModal('call')">📞 Call</button>
+                            <button class="btn btn-sm" onclick="closeAlertModal()">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===================== DASHBOARD 2: INTELLIGENCE ASSISTANT ===================== -->
+            <div id="dashboard-intelligence" class="dashboard-page">
+                <div class="intel-grid">
+                    <div class="intel-chat-col">
+                        <section class="card chat-card">
+                            <h2>💬 Intelligence Assistant</h2>
+                            <div id="chatMessages" class="chat-messages">
+                                <div class="message bot-message">
+                                    <strong>Assistant:</strong> Welcome! I can help with insights on agriculture, disaster management, and public health across India. Ask me anything — type or use voice.
+                                </div>
+                            </div>
+                            <div class="chat-input-area">
+                                <input type="text" id="chatInput" placeholder="Ask about crop status, flood risk, disease outbreaks, protests..." 
+                                       onkeydown="if(event.key==='Enter')sendTextQuery()">
+                                <button class="btn btn-primary" onclick="sendTextQuery()">Send</button>
+                                <button class="btn btn-voice" id="voiceBtn" onclick="toggleVoiceRecording()">🎤</button>
+                            </div>
+                            <div id="voiceStatus" class="voice-status hidden"></div>
+                        </section>
+                    </div>
+                    <div class="intel-side-col">
+                        <section class="card">
+                            <h2>📚 Knowledge Base</h2>
+                            <div id="ragStats" class="stats-grid">
+                                <div class="stat-item">
+                                    <span class="stat-value" id="totalDocs">--</span>
+                                    <span class="stat-label">Documents</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-value">4</span>
+                                    <span class="stat-label">Sectors</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-value">11</span>
+                                    <span class="stat-label">Languages</span>
+                                </div>
+                            </div>
+                        </section>
+                        <section class="card">
+                            <h2>🧠 Intelligence Repository</h2>
+                            <div class="intel-repo-stats">
+                                <div class="intel-repo-item">
+                                    <span class="intel-repo-val" id="intelKnowledgeUnits">--</span>
+                                    <span class="intel-repo-lbl">Knowledge Units</span>
+                                </div>
+                                <div class="intel-repo-item">
+                                    <span class="intel-repo-val" id="intelActiveQueries">--</span>
+                                    <span class="intel-repo-lbl">Active Queries</span>
+                                </div>
+                            </div>
+                            <div class="intel-sectors-list" id="intelSectorsList">
+                                <div class="intel-sector-item"><span class="intel-sector-dot" style="background:var(--red)"></span>Security & Defense<span class="intel-sector-count">--</span></div>
+                                <div class="intel-sector-item"><span class="intel-sector-dot" style="background:var(--green)"></span>Agriculture<span class="intel-sector-count">--</span></div>
+                                <div class="intel-sector-item"><span class="intel-sector-dot" style="background:var(--primary)"></span>Disaster Management<span class="intel-sector-count">--</span></div>
+                                <div class="intel-sector-item"><span class="intel-sector-dot" style="background:var(--yellow)"></span>Public Health<span class="intel-sector-count">--</span></div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===================== DASHBOARD 3: MAP VIEW ===================== -->
+            <div id="dashboard-map-view" class="dashboard-page">
+                <section class="card" style="height: calc(100vh - 140px);">
+                    <div class="card-header">
+                        <h2>🗺️ National Threat & Risk Map</h2>
+                        <div class="map-legend">
+                            <span class="legend-item"><span class="legend-dot" style="background:var(--red)"></span> Critical</span>
+                            <span class="legend-item"><span class="legend-dot" style="background:var(--orange)"></span> High</span>
+                            <span class="legend-item"><span class="legend-dot" style="background:var(--yellow)"></span> Moderate</span>
+                            <span class="legend-item"><span class="legend-dot" style="background:var(--green)"></span> Low</span>
+                        </div>
+                    </div>
+                    <div id="fullMap" class="map-container" style="height: calc(100% - 50px);"></div>
+                </section>
+            </div>
+
+            <!-- ===================== DASHBOARD 4: ANALYTICS ===================== -->
+            <div id="dashboard-analytics" class="dashboard-page">
+                <!-- Summary Stats Bar -->
+                <div class="an-stats-bar" id="anStatsBar"></div>
+
+                <!-- Predictive Alerts Ticker -->
+                <div class="an-alerts-ticker" id="anAlertsTicker"></div>
+
+                <!-- Row 1: Disaster Overview + Geographic Risk -->
+                <div class="an-grid-2">
+                    <section class="card an-card">
+                        <div class="an-card-head">
+                            <h2>🌊 Disaster Management Overview</h2>
+                            <span class="an-badge an-badge-red">LIVE</span>
+                        </div>
+                        <div class="an-disaster-stats" id="anDisasterStats"></div>
+                        <div class="chart-container" style="height:260px">
+                            <canvas id="disasterTypeChart"></canvas>
+                        </div>
+                    </section>
+                    <section class="card an-card">
+                        <div class="an-card-head">
+                            <h2>🗺️ Geographic Risk Zones</h2>
+                            <span class="an-badge an-badge-amber">TOP 10</span>
+                        </div>
+                        <div class="chart-container" style="height:280px">
+                            <canvas id="geoRiskChart"></canvas>
+                        </div>
+                        <div class="an-region-grid" id="anRegionGrid"></div>
+                    </section>
+                </div>
+
+                <!-- Row 2: Historical Trends + Flood Analysis -->
+                <div class="an-grid-2">
+                    <section class="card an-card">
+                        <div class="an-card-head">
+                            <h2>📈 Historical Trends (2020-2025)</h2>
+                            <span class="an-badge an-badge-blue">6 YEARS</span>
+                        </div>
+                        <div class="chart-container" style="height:260px">
+                            <canvas id="historicalTrendChart"></canvas>
+                        </div>
+                        <div class="an-insights" id="anInsights"></div>
+                    </section>
+                    <section class="card an-card">
+                        <div class="an-card-head">
+                            <h2>🌊 Flood Intelligence</h2>
+                            <span class="an-badge an-badge-red">MONSOON WATCH</span>
+                        </div>
+                        <div class="an-flood-summary" id="anFloodSummary"></div>
+                        <div class="chart-container" style="height:220px">
+                            <canvas id="floodInundationChart"></canvas>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Row 3: Disease Outbreaks + Crop Failure -->
+                <div class="an-grid-2">
+                    <section class="card an-card">
+                        <div class="an-card-head">
+                            <h2>🦠 Disease Outbreak Tracker</h2>
+                            <span class="an-badge an-badge-amber">6 ACTIVE</span>
+                        </div>
+                        <div class="an-outbreak-list" id="anOutbreakList"></div>
+                        <div class="chart-container" style="height:240px">
+                            <canvas id="diseaseTrendChart"></canvas>
+                        </div>
+                        <div class="an-correlation" id="anCorrelation"></div>
+                    </section>
+                    <section class="card an-card">
+                        <div class="an-card-head">
+                            <h2>🌾 Crop Failure Analysis</h2>
+                            <span class="an-badge an-badge-amber">KHARIF + RABI</span>
+                        </div>
+                        <div class="an-crop-stats" id="anCropStats"></div>
+                        <div class="chart-container" style="height:260px">
+                            <canvas id="cropFailureChart"></canvas>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Row 4: River Systems + Dam Levels -->
+                <div class="an-grid-2">
+                    <section class="card an-card">
+                        <div class="an-card-head">
+                            <h2>🏞️ River Systems at Risk</h2>
+                            <span class="an-badge an-badge-blue">6 RIVERS</span>
+                        </div>
+                        <div class="an-river-list" id="anRiverList"></div>
+                    </section>
+                    <section class="card an-card">
+                        <div class="an-card-head">
+                            <h2>🏗️ Dam Level Monitor</h2>
+                            <span class="an-badge an-badge-red">CRITICAL</span>
+                        </div>
+                        <div class="an-dam-list" id="anDamList"></div>
+                    </section>
+                </div>
+
+                <!-- Row 5: Monthly Disaster Trend + Sector Breakdown -->
+                <div class="an-grid-2">
+                    <section class="card an-card">
+                        <div class="an-card-head">
+                            <h2>📊 Monthly Disaster Trend</h2>
+                            <span class="an-badge an-badge-blue">12 MO</span>
+                        </div>
+                        <div class="chart-container" style="height:260px">
+                            <canvas id="monthlyDisasterChart"></canvas>
+                        </div>
+                    </section>
+                    <section class="card an-card">
+                        <div class="an-card-head">
+                            <h2>🎯 Sector Impact Distribution</h2>
+                        </div>
+                        <div class="chart-container" style="height:280px">
+                            <canvas id="sectorChart"></canvas>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- ===================== DASHBOARD 5: EMERGENCY / SOS ===================== -->
+            <div id="dashboard-emergency" class="dashboard-page">
+                <!-- Live Tracking Indicator (shown when tracking active) -->
+                <div id="trackingIndicator" class="tracking-indicator hidden">
+                    <div class="tracking-indicator-inner">
+                        <div class="tracking-pulse-dot"></div>
+                        <div class="tracking-info">
+                            <strong>📡 LIVE LOCATION TRACKING ACTIVE</strong>
+                            <div class="tracking-details">
+                                <span>📍 <span id="trackingCoords">--</span></span>
+                                <span>📊 <span id="trackingPoints">0</span> points</span>
+                                <span>⏱️ <span id="trackingDuration">0m 0s</span></span>
+                            </div>
+                        </div>
+                        <button class="btn btn-sm btn-stop-tracking" onclick="stopLiveTracking()">⏹ Stop Tracking</button>
+                    </div>
+                </div>
+
+                <div class="emergency-grid">
+                    <section class="card sos-card">
+                        <h2>🆘 Emergency SOS</h2>
+                        <p class="muted" style="margin-bottom:16px;">For citizens in immediate danger — triggers live location sharing + emergency dispatch</p>
+                        <button class="btn btn-sos-big" onclick="triggerSOS()">
+                            <span style="font-size:48px;">🆘</span>
+                            <span>TRIGGER SOS</span>
+                            <span class="muted" style="font-size:12px;">Starts live GPS tracking · Calls Police & Ambulance</span>
+                        </button>
+                    </section>
+                    <section class="card">
+                        <h2>📍 Live Location Tracking</h2>
+                        <p class="muted" style="margin-bottom:12px;">Track citizens who have shared their location during emergencies</p>
+                        <div id="sosMap" class="map-container map-large"></div>
+                    </section>
+                    <section class="card">
+                        <h2>📞 Emergency Contacts</h2>
+                        <div class="emergency-contacts-grid">
+                            <div class="contact-card" onclick="makeEmergencyCall('police')">
+                                <span class="contact-icon">👮</span>
+                                <span class="contact-name">Police</span>
+                                <span class="contact-number">100</span>
+                            </div>
+                            <div class="contact-card" onclick="makeEmergencyCall('ambulance')">
+                                <span class="contact-icon">🚑</span>
+                                <span class="contact-name">Ambulance</span>
+                                <span class="contact-number">108</span>
+                            </div>
+                            <div class="contact-card" onclick="makeEmergencyCall('fire')">
+                                <span class="contact-icon">🚒</span>
+                                <span class="contact-name">Fire</span>
+                                <span class="contact-number">101</span>
+                            </div>
+                            <div class="contact-card" onclick="makeEmergencyCall('disaster')">
+                                <span class="contact-icon">⛑️</span>
+                                <span class="contact-name">NDMA</span>
+                                <span class="contact-number">1078</span>
+                            </div>
+                            <div class="contact-card" onclick="makeEmergencyCall('women')">
+                                <span class="contact-icon">🛡️</span>
+                                <span class="contact-name">Women Helpline</span>
+                                <span class="contact-number">1091</span>
+                            </div>
+                            <div class="contact-card" onclick="makeEmergencyCall('child')">
+                                <span class="contact-icon">👶</span>
+                                <span class="contact-name">Child Helpline</span>
+                                <span class="contact-number">1098</span>
+                            </div>
+                        </div>
+                    </section>
+                    <section class="card">
+                        <h2>📋 Active SOS Requests</h2>
+                        <div id="sosRequests" class="sos-requests-list">
+                            <p class="muted">No active SOS requests.</p>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- ===================== DASHBOARD 6: AGRICULTURE ===================== -->
+            <div id="dashboard-agriculture" class="dashboard-page">
+                <!-- Top Stats Row -->
+                <div class="agri-stats-bar">
+                    <div class="agri-stat agri-stat-crops">
+                        <span class="agri-stat-icon">🌾</span>
+                        <div>
+                            <span class="agri-stat-count" id="agriTotalCrops">--</span>
+                            <span class="agri-stat-label">Crops Tracked</span>
+                        </div>
+                    </div>
+                    <div class="agri-stat agri-stat-healthy">
+                        <span class="agri-stat-icon">✅</span>
+                        <div>
+                            <span class="agri-stat-count" id="agriHealthy">--</span>
+                            <span class="agri-stat-label">Healthy</span>
+                        </div>
+                    </div>
+                    <div class="agri-stat agri-stat-atrisk">
+                        <span class="agri-stat-icon">⚠️</span>
+                        <div>
+                            <span class="agri-stat-count" id="agriAtRisk">--</span>
+                            <span class="agri-stat-label">At Risk</span>
+                        </div>
+                    </div>
+                    <div class="agri-stat agri-stat-weather">
+                        <span class="agri-stat-icon">🌦️</span>
+                        <div>
+                            <span class="agri-stat-count" id="agriWeatherAlerts">--</span>
+                            <span class="agri-stat-label">Weather Alerts</span>
+                        </div>
+                    </div>
+                    <div class="agri-stat agri-stat-hygiene">
+                        <span class="agri-stat-icon">🏥</span>
+                        <div>
+                            <span class="agri-stat-count" id="agriHygieneIssues">--</span>
+                            <span class="agri-stat-label">Hygiene Issues</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="agri-grid">
+                    <!-- Left Column -->
+                    <div class="agri-left">
+                        <!-- Crop Status Table -->
+                        <section class="card">
+                            <div class="card-header">
+                                <h2>🌾 Crop Status Monitor</h2>
+                                <select id="agriRiskFilter" class="filter-select" onchange="filterCropStatus()">
+                                    <option value="all">All Risk Levels</option>
+                                    <option value="high">High Risk</option>
+                                    <option value="moderate">Moderate</option>
+                                    <option value="low">Low / Healthy</option>
+                                </select>
+                            </div>
+                            <div class="agri-crop-table-wrap">
+                                <table class="agri-crop-table" id="cropStatusTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Crop</th>
+                                            <th>Region</th>
+                                            <th>Status</th>
+                                            <th>Yield Forecast</th>
+                                            <th>Risk</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="cropStatusBody">
+                                        <tr><td colspan="5" class="muted">Loading...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+
+                        <!-- Mandi Prices -->
+                        <section class="card">
+                            <div class="card-header">
+                                <h2>💰 Mandi Prices (MSP Comparison)</h2>
+                            </div>
+                            <div class="agri-crop-table-wrap">
+                                <table class="agri-crop-table" id="mandiPriceTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Crop</th>
+                                            <th>Mandi</th>
+                                            <th>Price (₹/qtl)</th>
+                                            <th>MSP (₹/qtl)</th>
+                                            <th>vs MSP</th>
+                                            <th>Trend</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="mandiPriceBody">
+                                        <tr><td colspan="6" class="muted">Loading...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </div>
+
+                    <!-- Right Column -->
+                    <div class="agri-right">
+                        <!-- Weather Disruption Alerts -->
+                        <section class="card">
+                            <h2>🌦️ Weather Disruption Alerts</h2>
+                            <div id="agriWeatherList" class="agri-weather-list">
+                                <p class="muted">Loading weather alerts...</p>
+                            </div>
+                        </section>
+
+                        <!-- Hygiene & Health -->
+                        <section class="card">
+                            <h2>🏥 Hygiene & Health — Agricultural Regions</h2>
+                            <div id="agriHygieneList" class="agri-hygiene-list">
+                                <p class="muted">Loading hygiene reports...</p>
+                            </div>
+                        </section>
+
+                        <!-- Yield Forecast Chart -->
+                        <section class="card">
+                            <h2>📊 Crop Yield Forecast</h2>
+                            <div class="chart-container">
+                                <canvas id="cropYieldChart"></canvas>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+
+                <!-- Full-Width: Seasonal Recommendations -->
+                <section class="card" style="margin-top:16px;">
+                    <div class="card-header">
+                        <h2>📅 Season-wise Crop & Fertilizer Recommendations</h2>
+                        <select id="seasonFilter" class="filter-select" onchange="filterSeasonRec()">
+                            <option value="all">All Seasons</option>
+                            <option value="Kharif">Kharif (June–Oct)</option>
+                            <option value="Rabi">Rabi (Nov–Mar)</option>
+                            <option value="Zaid">Zaid (Mar–Jun)</option>
+                        </select>
+                    </div>
+                    <div id="seasonRecommendations" class="season-rec-container">
+                        <p class="muted">Loading seasonal recommendations...</p>
+                    </div>
+                </section>
+
+                <!-- Full-Width: Unpredicted Rain Advisory -->
+                <section class="card" style="margin-top:16px;">
+                    <h2>🌧️ Unpredicted Rain / Weather Advisory — Prevention & Response</h2>
+                    <p class="muted" style="margin-bottom:12px;">What to do when unexpected weather hits your crops — immediate actions & long-term prevention</p>
+                    <div id="rainAdvisoryList" class="rain-advisory-container">
+                        <p class="muted">Loading rain advisories...</p>
+                    </div>
+                </section>
+            </div>
+
+        <!-- ========== DASHBOARD 7: PUBLIC HEALTH & DISEASE ========== -->
+        <div id="dashboard-health" class="dashboard-page" style="display:none;">
+
+            <!-- Stats Bar -->
+            <div class="health-stats-bar">
+                <div class="health-stat-card outbreak"><span class="stat-val" id="hStatOutbreaks">--</span><span class="stat-lbl">Active Outbreaks</span></div>
+                <div class="health-stat-card cases"><span class="stat-val" id="hStatCases">--</span><span class="stat-lbl">Total Cases</span></div>
+                <div class="health-stat-card deaths"><span class="stat-val" id="hStatDeaths">--</span><span class="stat-lbl">Deaths</span></div>
+                <div class="health-stat-card vacc"><span class="stat-val" id="hStatVacc">--</span><span class="stat-lbl">Avg Vaccination %</span></div>
+                <div class="health-stat-card safety"><span class="stat-val" id="hStatSafety">--</span><span class="stat-lbl">Safety Alerts</span></div>
+            </div>
+
+            <div class="health-grid">
+                <!-- Disease Outbreaks — Full Width -->
+                <section class="card health-outbreaks-section" style="grid-column:1/-1;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                        <div>
+                            <h2>🦠 Disease Outbreaks</h2>
+                            <p class="muted">Active outbreaks across India — real-time surveillance data</p>
+                        </div>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <select id="outbreakSeverityFilter" class="filter-select" onchange="filterOutbreaks()">
+                                <option value="all">All Severity</option>
+                                <option value="critical">🔴 Critical</option>
+                                <option value="high">🟠 High</option>
+                                <option value="moderate">🟡 Moderate</option>
+                            </select>
+                            <select id="outbreakTrendFilter" class="filter-select" onchange="filterOutbreaks()">
+                                <option value="all">All Trends</option>
+                                <option value="rising">📈 Rising</option>
+                                <option value="stable">➡️ Stable</option>
+                                <option value="declining">📉 Declining</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="diseaseOutbreakList" class="outbreak-list">
+                        <p class="muted">Loading outbreaks...</p>
+                    </div>
+                </section>
+
+                <!-- Vaccination Status -->
+                <section class="card health-vaccination-section">
+                    <h2>💉 Vaccination Coverage</h2>
+                    <p class="muted">National immunization program status</p>
+                    <div id="vaccinationList" class="vaccination-list">
+                        <p class="muted">Loading vaccination data...</p>
+                    </div>
+                </section>
+
+                <!-- Water & Sanitation -->
+                <section class="card health-sanitation-section">
+                    <h2>🚰 Water Quality & Sanitation</h2>
+                    <p class="muted">Regional water safety and open defecation free status</p>
+                    <table class="data-table" id="sanitationTable">
+                        <thead>
+                            <tr>
+                                <th>Region</th>
+                                <th>Water Quality</th>
+                                <th>Contamination</th>
+                                <th>ODF Status</th>
+                                <th>Sanitation Score</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sanitationTableBody">
+                            <tr><td colspan="5" class="muted">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <!-- Hospital Capacity -->
+                <section class="card health-hospital-section">
+                    <h2>🏨 Hospital Capacity</h2>
+                    <p class="muted">Real-time bed, ICU & ventilator availability</p>
+                    <div id="hospitalCapacityList" class="hospital-list">
+                        <p class="muted">Loading hospital data...</p>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Full Width: Public Safety Alerts -->
+            <section class="card" style="margin-top:16px;">
+                <h2>🚨 Public Safety Alerts</h2>
+                <p class="muted" style="margin-bottom:12px;">Food safety, air quality, drug recalls and other public health warnings</p>
+                <div id="publicSafetyAlertList" class="safety-alert-list">
+                    <p class="muted">Loading safety alerts...</p>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- ========== DASHBOARD 8: WEATHER FORECASTING ========== -->
+        <div id="dashboard-weather" class="dashboard-page" style="display:none;">
+
+            <!-- Stats Bar -->
+            <div class="weather-stats-bar">
+                <div class="wx-stat-card temp"><span class="stat-val" id="wxStatTemp">--</span><span class="stat-lbl">Avg Temp °C</span></div>
+                <div class="wx-stat-card feels"><span class="stat-val" id="wxStatFeels">--</span><span class="stat-lbl">Feels Like °C</span></div>
+                <div class="wx-stat-card humidity"><span class="stat-val" id="wxStatHumidity">--</span><span class="stat-lbl">Avg Humidity %</span></div>
+                <div class="wx-stat-card alerts-count"><span class="stat-val" id="wxStatAlerts">--</span><span class="stat-lbl">Active Alerts</span></div>
+                <div class="wx-stat-card monsoon"><span class="stat-val" id="wxStatMonsoon">--</span><span class="stat-lbl">Monsoon Forecast</span></div>
+            </div>
+
+            <div class="weather-grid">
+                <!-- Current City Conditions -->
+                <section class="card wx-current-section">
+                    <h2>🌡️ Current Conditions — Major Cities</h2>
+                    <p class="muted">Live temperature, humidity, AQI & UV index</p>
+                    <div id="wxCityCards" class="wx-city-grid">
+                        <p class="muted">Loading current conditions...</p>
+                    </div>
+                </section>
+
+                <!-- 7-Day Forecast -->
+                <section class="card wx-forecast-section">
+                    <h2>📅 7-Day Forecast</h2>
+                    <p class="muted">Temperature trend & rain probability (Delhi/NCR reference)</p>
+                    <div id="wxForecastStrip" class="wx-forecast-strip">
+                        <p class="muted">Loading forecast...</p>
+                    </div>
+                    <div style="margin-top:16px;">
+                        <canvas id="wxForecastChart" height="180"></canvas>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Historical Trends — Full Width -->
+            <section class="card" style="margin-top:16px;">
+                <h2>📈 Historical Trends — Temperature, Rainfall & Humidity (2026)</h2>
+                <p class="muted">Monthly averages — (*) denotes IMD predictions</p>
+                <canvas id="wxHistoricalChart" height="220"></canvas>
+            </section>
+
+            <div class="weather-grid" style="margin-top:16px;">
+                <!-- Geography Weather Map -->
+                <section class="card wx-geo-section">
+                    <h2>🗺️ Climate Geography Zones</h2>
+                    <p class="muted">India's weather zones with current status & monsoon onset</p>
+                    <div id="wxGeoMap" style="height:360px;border-radius:8px;margin-bottom:12px;"></div>
+                    <div id="wxGeoList" class="wx-geo-list">
+                        <p class="muted">Loading zones...</p>
+                    </div>
+                </section>
+
+                <!-- Monsoon Prediction -->
+                <section class="card wx-monsoon-section">
+                    <h2>🌊 Monsoon 2026 Prediction</h2>
+                    <p class="muted">IMD seasonal forecast & El Niño/IOD analysis</p>
+                    <div id="wxMonsoonPanel" class="wx-monsoon-panel">
+                        <p class="muted">Loading monsoon data...</p>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Severe Weather Alerts — Full Width -->
+            <section class="card" style="margin-top:16px;">
+                <h2>⚠️ Severe Weather Alerts</h2>
+                <p class="muted" style="margin-bottom:12px;">IMD warnings — heat waves, storms, heavy rain, dust events</p>
+                <div id="wxAlertList" class="wx-alert-list">
+                    <p class="muted">Loading warnings...</p>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- ========== DASHBOARD 9: INCIDENT REPORTING ========== -->
+        <div id="dashboard-incidents" class="dashboard-page" style="display:none;">
+
+            <!-- Stats Bar -->
+            <div class="inc-stats-bar">
+                <div class="inc-stat-card total"><span class="stat-val" id="incStatTotal">--</span><span class="stat-lbl">Total Incidents</span></div>
+                <div class="inc-stat-card submitted"><span class="stat-val" id="incStatSubmitted">--</span><span class="stat-lbl">Submitted</span></div>
+                <div class="inc-stat-card review"><span class="stat-val" id="incStatReview">--</span><span class="stat-lbl">Under Review</span></div>
+                <div class="inc-stat-card progress"><span class="stat-val" id="incStatProgress">--</span><span class="stat-lbl">In Progress</span></div>
+                <div class="inc-stat-card resolved"><span class="stat-val" id="incStatResolved">--</span><span class="stat-lbl">Resolved</span></div>
+            </div>
+
+            <div class="inc-grid">
+                <!-- Raise New Incident Form -->
+                <section class="card inc-form-section">
+                    <h2>🚨 Raise New Incident</h2>
+                    <p class="muted">Report an issue to the government for action</p>
+                    <form id="incidentForm" class="inc-form" onsubmit="submitIncident(event)">
+                        <div class="inc-form-row">
+                            <div class="inc-field">
+                                <label>Incident Title *</label>
+                                <input type="text" id="incTitle" placeholder="Brief title of the issue" required>
+                            </div>
+                            <div class="inc-field">
+                                <label>Category *</label>
+                                <select id="incCategory" required>
+                                    <option value="">Select category</option>
+                                    <option value="Infrastructure">🏗️ Infrastructure (Roads, Bridges, Power)</option>
+                                    <option value="Health & Sanitation">🏥 Health & Sanitation</option>
+                                    <option value="Environment">🌳 Environment (Pollution, Deforestation)</option>
+                                    <option value="Agriculture">🌾 Agriculture (Crop Damage, Water Issues)</option>
+                                    <option value="Law & Order">🚔 Law & Order (Crime, Safety)</option>
+                                    <option value="Disaster">⚠️ Disaster (Flood, Fire, Earthquake)</option>
+                                    <option value="Education">📚 Education</option>
+                                    <option value="Corruption">🔍 Corruption / Misconduct</option>
+                                    <option value="Women Safety">🛡️ Women Safety</option>
+                                    <option value="Other">📝 Other</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="inc-form-row">
+                            <div class="inc-field">
+                                <label>Severity *</label>
+                                <select id="incSeverity" required>
+                                    <option value="moderate">🟡 Moderate</option>
+                                    <option value="high">🟠 High</option>
+                                    <option value="critical">🔴 Critical — Immediate Attention</option>
+                                </select>
+                            </div>
+                            <div class="inc-field">
+                                <label>Location *</label>
+                                <input type="text" id="incLocation" placeholder="Specific address or landmark" required>
+                                <button type="button" class="inc-gps-btn" onclick="incDetectLocation()" title="Use GPS">📍 Detect</button>
+                            </div>
+                        </div>
+                        <div class="inc-field">
+                            <label>Detailed Description *</label>
+                            <textarea id="incDescription" rows="3" placeholder="Describe the issue in detail — what, when, impact, people affected..." required></textarea>
+                        </div>
+                        <div class="inc-form-row">
+                            <div class="inc-field">
+                                <label>Your Name</label>
+                                <input type="text" id="incReportedBy" placeholder="Name or designation">
+                            </div>
+                            <div class="inc-field">
+                                <label>Contact Number</label>
+                                <input type="text" id="incContact" placeholder="+91-XXXXX-XXXXX">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary inc-submit-btn">📤 Submit Incident to Government</button>
+                    </form>
+                    <div id="incFormStatus" class="inc-form-status hidden"></div>
+                </section>
+
+                <!-- Incident Tracker -->
+                <section class="card inc-tracker-section">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                        <div>
+                            <h2>📋 Incident Tracker</h2>
+                            <p class="muted">Track reported incidents and government response</p>
+                        </div>
+                        <div style="display:flex;gap:8px;">
+                            <select id="incFilterStatus" class="filter-select" onchange="filterIncidents()">
+                                <option value="all">All Status</option>
+                                <option value="submitted">Submitted</option>
+                                <option value="under-review">Under Review</option>
+                                <option value="assigned">Assigned</option>
+                                <option value="in-progress">In Progress</option>
+                                <option value="resolved">Resolved</option>
+                            </select>
+                            <select id="incFilterCategory" class="filter-select" onchange="filterIncidents()">
+                                <option value="all">All Categories</option>
+                                <option value="Infrastructure">Infrastructure</option>
+                                <option value="Health & Sanitation">Health & Sanitation</option>
+                                <option value="Environment">Environment</option>
+                                <option value="Agriculture">Agriculture</option>
+                                <option value="Law & Order">Law & Order</option>
+                                <option value="Disaster">Disaster</option>
+                                <option value="Corruption">Corruption</option>
+                                <option value="Women Safety">Women Safety</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="incidentList" class="inc-list">
+                        <p class="muted">Loading incidents...</p>
+                    </div>
+                </section>
+            </div>
+
+        </div>
+
+        <!-- ========== DASHBOARD 10: WEATHER FORECASTING RECOMMENDATIONS ========== -->
+        <div id="dashboard-weather-reco" class="dashboard-page" style="display:none;">
+
+            <!-- Header -->
+            <div style="margin-bottom:20px;">
+                <h2 style="font-size:22px;font-weight:800;letter-spacing:-0.5px;margin-bottom:4px;">📡 Weather Forecasting & Recommendations</h2>
+                <p class="muted">AI-powered state-wise weather advisory for all 28 states & 8 union territories</p>
+            </div>
+
+            <!-- National Summary -->
+            <div id="wrNationalSummary" class="wr-national-summary"></div>
+
+            <!-- State Weather Grid -->
+            <div class="wr-state-grid" id="wrStateGrid">
+                <p class="muted">Loading state-wise forecasts...</p>
+            </div>
+
+            <!-- Impact Sectors -->
+            <section class="card" style="margin-top:20px;">
+                <h2>🏗️ Sector-wise Weather Impact Matrix</h2>
+                <p class="muted" style="margin-bottom:14px;">How current weather conditions affect each sector across India</p>
+                <div class="wr-sector-matrix" id="wrSectorMatrix">
+                    <p class="muted">Loading sector impacts...</p>
+                </div>
+            </section>
+
+            <!-- Regional Advisory -->
+            <section class="card" style="margin-top:20px;">
+                <h2>🎯 Regional Advisory — Do's & Don'ts</h2>
+                <p class="muted" style="margin-bottom:14px;">Actionable guidance per region based on current and forecast conditions</p>
+                <div class="wr-advisory-list" id="wrAdvisoryList">
+                    <p class="muted">Loading advisories...</p>
+                </div>
+            </section>
+
+        </div>
+
+        </main>
+    </div>
+
+    <!-- ========== GLOBAL FLOATING ASK ME PANEL ========== -->
+    <button id="askMeFab" class="askme-fab" onclick="toggleAskMePanel()">
+        <span class="askme-fab-icon">💬</span>
+        <span class="askme-fab-label">Ask Me</span>
+    </button>
+
+    <div id="askMePanel" class="askme-panel hidden">
+        <div class="askme-header">
+            <div class="askme-header-left">
+                <span class="askme-logo">🤖</span>
+                <div>
+                    <h3>Ask Me Anything</h3>
+                    <span class="askme-subtitle">Powered by Sarvam AI — Any Language</span>
+                </div>
+            </div>
+            <button class="askme-close" onclick="toggleAskMePanel()">✕</button>
+        </div>
+
+        <div class="askme-lang-bar">
+            <select id="askMeLang" class="askme-lang-select">
+                <option value="auto">🌐 Auto-Detect</option>
+                <option value="en-IN">English</option>
+                <option value="hi-IN">हिन्दी (Hindi)</option>
+                <option value="bn-IN">বাংলা (Bengali)</option>
+                <option value="ta-IN">தமிழ் (Tamil)</option>
+                <option value="te-IN">తెలుగు (Telugu)</option>
+                <option value="mr-IN">मराठी (Marathi)</option>
+                <option value="gu-IN">ગુજરાતી (Gujarati)</option>
+                <option value="kn-IN">ಕನ್ನಡ (Kannada)</option>
+                <option value="ml-IN">മലയാളం (Malayalam)</option>
+                <option value="pa-IN">ਪੰਜਾਬੀ (Punjabi)</option>
+                <option value="od-IN">ଓଡ଼ିଆ (Odia)</option>
+                <option value="as-IN">অসমীয়া (Assamese)</option>
+                <option value="ur-IN">اردو (Urdu)</option>
+                <option value="mai-IN">मैथिली (Maithili)</option>
+                <option value="sa-IN">संस्कृतम् (Sanskrit)</option>
+                <option value="ne-IN">नेपाली (Nepali)</option>
+                <option value="sd-IN">سنڌي (Sindhi)</option>
+                <option value="ks-IN">كٲشُر (Kashmiri)</option>
+                <option value="doi-IN">डोगरी (Dogri)</option>
+                <option value="kok-IN">कोंकणी (Konkani)</option>
+                <option value="mni-IN">মৈতৈলোন্ (Manipuri)</option>
+                <option value="sat-IN">ᱥᱟᱱᱛᱟᱲᱤ (Santali)</option>
+                <option value="bo-IN">བོད་སྐད (Bodo)</option>
+            </select>
+            <button id="askMeTtsToggle" class="askme-tts-btn active" onclick="toggleAskMeTTS()" title="Voice replies on/off">🔊</button>
+        </div>
+
+        <div id="askMeMessages" class="askme-messages">
+            <div class="askme-msg bot">
+                <span class="askme-msg-avatar">🤖</span>
+                <div class="askme-msg-body">
+                    Hi! I'm your Sarvam AI assistant. Ask me about agriculture, health, weather, disasters, or security — in <strong>any Indian language</strong>. Type or tap 🎤 to speak.
+                </div>
+            </div>
+        </div>
+
+        <div id="askMeVoiceStatus" class="askme-voice-status hidden"></div>
+
+        <div class="askme-input-area">
+            <input type="text" id="askMeInput" class="askme-text-input" placeholder="Type your question in any language..."
+                   onkeydown="if(event.key==='Enter')askMeSend()">
+            <button class="askme-btn-send" onclick="askMeSend()" title="Send text">➤</button>
+            <button class="askme-btn-mic" id="askMeMicBtn" onclick="askMeToggleVoice()" title="Hold to speak">🎤</button>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
