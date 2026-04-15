@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -220,6 +221,15 @@ app = FastAPI(
     description="AI-Powered Public Intelligence & Civilian Safety Platform using Sarvam AI",
     version="1.0.0",
     lifespan=lifespan,
+)
+
+# Enable CORS for all origins
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins in development
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Serve frontend
@@ -1778,6 +1788,10 @@ class LiveLocationUpdate(BaseModel):
 
 @app.get("/")
 async def landing():
+    return FileResponse("frontend/index.html")
+
+@app.get("/landing")
+async def landing_page():
     return FileResponse("frontend/landing.html")
 
 @app.get("/dashboard")
@@ -1788,29 +1802,37 @@ async def dashboard():
 # ---------- Voice Q&A ----------
 
 @app.post("/api/voice-query")
-async def voice_query(audio: UploadFile = File(...)):
+async def voice_query(audio: UploadFile = File(...), language_code: str = Form("auto")):
     """Full voice pipeline: audio in → audio + text out"""
-    audio_bytes = await audio.read()
-    if not audio_bytes:
-        raise HTTPException(status_code=400, detail="Empty audio file")
+    try:
+        audio_bytes = await audio.read()
+        if not audio_bytes:
+            raise HTTPException(status_code=400, detail="Empty audio file")
 
-    result = process_voice_query(audio_bytes)
+        result = process_voice_query(audio_bytes, preferred_language=language_code)
 
-    # Encode audio response as base64 for JSON transport
-    audio_b64 = ""
-    if result.get("response_audio"):
-        audio_b64 = base64.b64encode(result["response_audio"]).decode("utf-8")
+        # Encode audio response as base64 for JSON transport
+        audio_b64 = ""
+        if result.get("response_audio"):
+            audio_b64 = base64.b64encode(result["response_audio"]).decode("utf-8")
 
-    return {
-        "user_text": result["user_text"],
-        "user_text_english": result["user_text_english"],
-        "detected_language": result["detected_language"],
-        "response_english": result["response_english"],
-        "response_translated": result["response_translated"],
-        "response_audio_base64": audio_b64,
-        "sector": result["sector"],
-        "emergency_detected": result.get("emergency_detected", False),
-    }
+        return {
+            "user_text": result["user_text"],
+            "user_text_english": result["user_text_english"],
+            "detected_language": result["detected_language"],
+            "response_english": result["response_english"],
+            "response_translated": result["response_translated"],
+            "response_audio_base64": audio_b64,
+            "sector": result["sector"],
+            "emergency_detected": result.get("emergency_detected", False),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print(f"Voice query error: {e}", file=__import__('sys').stderr)
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Voice processing failed: {str(e)[:200]}")
 
 
 # ---------- Text Q&A ----------

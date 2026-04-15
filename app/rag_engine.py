@@ -9,20 +9,35 @@ from app.config import CHROMA_DB_PATH, EMBEDDING_MODEL, RAG_TOP_K
 
 _client = None
 _collection = None
+_fallback_docs = {}
+_use_fallback = False
+
+
+def _enable_fallback(exc: Exception):
+    global _use_fallback
+    if not _use_fallback:
+        print(f"RAG fallback enabled: {exc}")
+    _use_fallback = True
 
 
 def _get_collection():
     global _client, _collection
+    if _use_fallback:
+        return None
     if _collection is None:
-        _client = chromadb.PersistentClient(path=CHROMA_DB_PATH)
-        ef = embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name=EMBEDDING_MODEL
-        )
-        _collection = _client.get_or_create_collection(
-            name="public_intelligence",
-            embedding_function=ef,
-            metadata={"hnsw:space": "cosine"},
-        )
+        try:
+            _client = chromadb.PersistentClient(path=CHROMA_DB_PATH)
+            ef = embedding_functions.SentenceTransformerEmbeddingFunction(
+                model_name=EMBEDDING_MODEL
+            )
+            _collection = _client.get_or_create_collection(
+                name="public_intelligence",
+                embedding_function=ef,
+                metadata={"hnsw:space": "cosine"},
+            )
+        except Exception as exc:
+            _enable_fallback(exc)
+            return None
     return _collection
 
 
@@ -33,6 +48,15 @@ def ingest_documents(documents: list[dict]):
     metadata should include: sector (agriculture/disaster/health), region, date, source
     """
     collection = _get_collection()
+    if _use_fallback or collection is None:
+        for doc in documents:
+            _fallback_docs[doc["id"]] = {
+                "id": doc["id"],
+                "text": doc["text"],
+                "metadata": doc.get("metadata", {}),
+            }
+        return len(documents)
+
     ids = [doc["id"] for doc in documents]
     texts = [doc["text"] for doc in documents]
     metadatas = [doc.get("metadata", {}) for doc in documents]
@@ -47,6 +71,26 @@ def query(text: str, top_k: int = RAG_TOP_K, sector: str = None) -> list[dict]:
     Optionally filter by sector: agriculture, disaster, health
     """
     collection = _get_collection()
+    if _use_fallback or collection is None:
+        terms = [t for t in text.lower().split() if t]
+        matches = []
+        for doc in _fallback_docs.values():
+            metadata = doc.get("metadata", {})
+            if sector and metadata.get("sector") != sector:
+                continue
+            haystack = f'{doc["text"]} {metadata}'.lower()
+            score = sum(1 for term in terms if term in haystack)
+            if score:
+                matches.append({
+                    "id": doc["id"],
+                    "text": doc["text"],
+                    "metadata": metadata,
+                    "distance": None,
+                    "_score": score,
+                })
+        matches.sort(key=lambda item: item["_score"], reverse=True)
+        return [{k: v for k, v in item.items() if k != "_score"} for item in matches[:top_k]]
+
     where_filter = {"sector": sector} if sector else None
 
     results = collection.query(
@@ -101,4 +145,6 @@ def get_all_sectors_context(query_text: str) -> dict[str, str]:
 def get_stats() -> dict:
     """Get collection statistics."""
     collection = _get_collection()
+    if _use_fallback or collection is None:
+        return {"total_documents": len(_fallback_docs)}
     return {"total_documents": collection.count()}

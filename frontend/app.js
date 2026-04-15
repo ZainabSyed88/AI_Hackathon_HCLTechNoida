@@ -52,21 +52,70 @@ if (typeof Chart !== 'undefined') {
 
 // =================== Init ===================
 document.addEventListener("DOMContentLoaded", () => {
+    setupWeatherDashboardCopy();
     loadAlerts();
     loadLiveEvents();
     loadRAGStats();
     initAlertsMap();
+    updateOpsTimestamp();
 });
+
+function setupWeatherDashboardCopy() {
+    const weatherTab = document.querySelector('[data-dashboard="weather"] .nav-label');
+    if (weatherTab) weatherTab.textContent = "Weather";
+
+    const advisoryTab = document.querySelector('[data-dashboard="weather-reco"] .nav-label');
+    if (advisoryTab) advisoryTab.textContent = "Advisory";
+
+    const weatherPage = document.getElementById("dashboard-weather");
+    if (weatherPage) {
+        const weatherTitles = weatherPage.querySelectorAll("h2");
+        if (weatherTitles[0]) weatherTitles[0].textContent = "Operational Weather Snapshot";
+    }
+
+    const advisoryPage = document.getElementById("dashboard-weather-reco");
+    if (advisoryPage) {
+        const headerTitle = advisoryPage.querySelector("div[style='margin-bottom:20px;'] h2");
+        const headerText = advisoryPage.querySelector("div[style='margin-bottom:20px;'] .muted");
+        if (headerTitle) headerTitle.textContent = "Weather Advisory & Impact Desk";
+        if (headerText) headerText.textContent = "Action-oriented state advisories, sector impacts, and response guidance for all 28 states and 8 union territories";
+
+        const sectionTitles = advisoryPage.querySelectorAll("h2");
+        if (sectionTitles[1]) sectionTitles[1].textContent = "Sector-wise Impact Matrix";
+        if (sectionTitles[2]) sectionTitles[2].textContent = "Regional Advisory - Do's & Don'ts";
+
+        const sectionMuted = advisoryPage.querySelectorAll("p.muted");
+        if (sectionMuted[1]) sectionMuted[1].textContent = "How current weather patterns affect agriculture, health, infrastructure, and transport across India";
+        if (sectionMuted[2]) sectionMuted[2].textContent = "Actionable guidance per region based on current conditions and short-range outlook";
+    }
+}
+
+function updateOpsTimestamp() {
+    const el = document.getElementById("opsLastRefresh");
+    if (!el) return;
+    el.textContent = new Date().toLocaleString("en-IN", {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+}
 
 // =================== Dashboard Navigation ===================
 function switchDashboard(name) {
     // Hide all dashboard pages
-    document.querySelectorAll(".dashboard-page").forEach(p => p.classList.remove("active"));
+    document.querySelectorAll(".dashboard-page").forEach(p => {
+        p.classList.remove("active");
+        p.style.display = "none";
+    });
     // Deactivate all nav items
     document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
     // Show selected
     const page = document.getElementById(`dashboard-${name}`);
-    if (page) page.classList.add("active");
+    if (page) {
+        page.classList.add("active");
+        page.style.display = "block";
+    }
     const navBtn = document.querySelector(`[data-dashboard="${name}"]`);
     if (navBtn) navBtn.classList.add("active");
 
@@ -74,11 +123,11 @@ function switchDashboard(name) {
     if (name === "map-view" && !fullMap) initFullMap();
     if (name === "emergency" && !sosMap) initSOSMap();
     if (name === "analytics" && !chartsInitialized) { initCharts(); chartsInitialized = true; }
-    if (name === "agriculture" && !agriLoaded) { loadAgricultureDashboard(); agriLoaded = true; }
-    if (name === "health" && !healthLoaded) { loadHealthDashboard(); healthLoaded = true; }
-    if (name === "weather" && !weatherLoaded) { loadWeatherDashboard(); weatherLoaded = true; }
-    if (name === "weather-reco" && !weatherRecoLoaded) { loadWeatherReco(); weatherRecoLoaded = true; }
-    if (name === "incidents" && !incidentsLoaded) { loadIncidentsDashboard(); incidentsLoaded = true; }
+    if (name === "agriculture" && !agriLoaded) loadAgricultureDashboard();
+    if (name === "health" && !healthLoaded) loadHealthDashboard();
+    if (name === "weather" && !weatherLoaded) loadWeatherDashboard();
+    if (name === "weather-reco" && !weatherRecoLoaded) loadWeatherReco();
+    if (name === "incidents" && !incidentsLoaded) loadIncidentsDashboard();
 
     // Fix map resize on tab switch
     setTimeout(() => {
@@ -410,19 +459,30 @@ async function sendVoiceQuery() {
     const blob = new Blob(audioChunks, { type: "audio/webm" });
     const formData = new FormData();
     formData.append("audio", blob, "recording.webm");
+    formData.append("language_code", document.getElementById("languageSelect")?.value || "auto");
 
     addMessage("🎤 [Voice message sent]", "user");
     addMessage("Processing voice input...", "bot", "thinkingMsg");
 
     try {
-        const res = await fetch(`${API}/api/voice-query`, {
+        // Create a timeout promise
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Request timeout: Server took too long to respond")), 30000)
+        );
+        
+        const fetchPromise = fetch(`${API}/api/voice-query`, {
             method: "POST",
             body: formData,
         });
+        
+        const res = await Promise.race([fetchPromise, timeoutPromise]);
         const data = await res.json();
+        
+        if (!res.ok) {
+            throw new Error(data.detail || "Server error: " + res.status);
+        }
+        
         removeMessage("thinkingMsg");
-
-        addMessage(`🗣️ You said: "${data.user_text}"`, "bot");
 
         // Check if voice input was an emergency
         if (detectEmergency(data.user_text) || detectEmergency(data.user_text_english || "") || data.emergency_detected) {
@@ -431,9 +491,8 @@ async function sendVoiceQuery() {
             return;
         }
 
-        const lang = document.getElementById("languageSelect").value;
-        const display = lang === "en-IN" ? data.response_english : data.response_translated;
-        addMessage(display, "bot");
+        // Only show what user said, then play audio response (no text response displayed)
+        addMessage(`🎤 You: "${data.user_text}"`, "user");
 
         if (data.response_audio_base64) {
             playAudio(data.response_audio_base64);
@@ -442,7 +501,18 @@ async function sendVoiceQuery() {
         status.classList.add("hidden");
     } catch (err) {
         removeMessage("thinkingMsg");
-        addMessage("Error: Could not process voice query.", "bot");
+        console.error("Voice query error:", err);
+        
+        let errorMsg = "Error: Could not process voice query.";
+        if (err.message.includes("timeout")) {
+            errorMsg = "Error: Request timeout. Server is not responding. Please try again.";
+        } else if (err.message.includes("Network")) {
+            errorMsg = "Error: Network error. Please check your connection.";
+        } else if (err.message) {
+            errorMsg = "Error: " + err.message;
+        }
+        
+        addMessage(errorMsg, "bot");
         status.classList.add("hidden");
     }
 }
@@ -499,6 +569,11 @@ function updateAlertStats(alerts) {
     document.getElementById("moderateCount").textContent = counts.MODERATE;
     document.getElementById("lowCount").textContent = counts.LOW;
     document.getElementById("totalAlertCount").textContent = alerts.length;
+    const shellAlert = document.getElementById("shellAlertCount");
+    const shellCritical = document.getElementById("shellCriticalCount");
+    if (shellAlert) shellAlert.textContent = alerts.length;
+    if (shellCritical) shellCritical.textContent = counts.CRITICAL;
+    updateOpsTimestamp();
 }
 
 function filterAlerts() {
@@ -649,6 +724,11 @@ function renderLiveEventsStats(stats) {
     document.getElementById("leStatSecurity").textContent =
         (stats.by_type?.war || 0) + (stats.by_type?.naxal || 0) + (stats.by_type?.civil_unrest || 0);
     document.getElementById("leStatHealth").textContent = (stats.by_type?.pandemic || 0);
+    const shellLive = document.getElementById("shellLiveCount");
+    const shellHealth = document.getElementById("shellHealthCount");
+    if (shellLive) shellLive.textContent = stats.active || 0;
+    if (shellHealth) shellHealth.textContent = stats.by_type?.pandemic || 0;
+    updateOpsTimestamp();
 }
 
 function renderLiveEventsFeed(events) {
@@ -1312,7 +1392,9 @@ function renderAnalyticsDashboard(d) {
 async function loadAgricultureDashboard() {
     try {
         const res = await fetch(`${API}/api/agriculture/dashboard`);
+        if (!res.ok) throw new Error(`Agriculture dashboard request failed: ${res.status}`);
         agriData = await res.json();
+        agriLoaded = true;
 
         renderAgriStats(agriData);
         renderCropStatus(agriData.crop_status);
@@ -1322,8 +1404,10 @@ async function loadAgricultureDashboard() {
         renderCropYieldChart(agriData.crop_status);
         renderSeasonRecommendations(agriData.seasonal_recommendations);
         renderRainAdvisory(agriData.unpredicted_rain_advisory);
-    } catch {
+    } catch (e) {
         agriData = null;
+        agriLoaded = false;
+        console.error("Agriculture dashboard load failed:", e);
     }
 }
 
@@ -1568,7 +1652,9 @@ function renderRainAdvisory(advisories) {
 async function loadHealthDashboard() {
     try {
         const res = await fetch(`${API}/api/health/dashboard`);
+        if (!res.ok) throw new Error(`Health dashboard request failed: ${res.status}`);
         healthData = await res.json();
+        healthLoaded = true;
         renderHealthStats(healthData);
         renderDiseaseOutbreaks(healthData.disease_outbreaks);
         renderVaccinationStatus(healthData.vaccination_status);
@@ -1576,7 +1662,13 @@ async function loadHealthDashboard() {
         renderHospitalCapacity(healthData.hospital_capacity);
         renderPublicSafetyAlerts(healthData.public_safety_alerts);
     } catch (e) {
+        healthLoaded = false;
         console.error("Health dashboard load failed:", e);
+        document.getElementById("diseaseOutbreakList").innerHTML = '<p class="muted">Failed to load health data. Open the tab again to retry.</p>';
+        document.getElementById("vaccinationList").innerHTML = '<p class="muted">Failed to load vaccination data.</p>';
+        document.getElementById("sanitationTableBody").innerHTML = '<tr><td colspan="5" class="muted">Failed to load sanitation data.</td></tr>';
+        document.getElementById("hospitalCapacityList").innerHTML = '<p class="muted">Failed to load hospital capacity.</p>';
+        document.getElementById("publicSafetyAlertList").innerHTML = '<p class="muted">Failed to load safety alerts.</p>';
     }
 }
 
@@ -1750,7 +1842,9 @@ function filterOutbreaks() {
 async function loadWeatherDashboard() {
     try {
         const res = await fetch(`${API}/api/weather/dashboard`);
+        if (!res.ok) throw new Error(`Weather dashboard request failed: ${res.status}`);
         weatherData = await res.json();
+        weatherLoaded = true;
         renderWeatherStats(weatherData);
         renderCityConditions(weatherData.current_conditions);
         renderWeeklyForecast(weatherData.weekly_forecast);
@@ -1760,7 +1854,13 @@ async function loadWeatherDashboard() {
         renderMonsoonPanel(weatherData.monsoon_prediction);
         renderSevereWeatherAlerts(weatherData.severe_weather_alerts);
     } catch (e) {
+        weatherLoaded = false;
         console.error("Weather dashboard load failed:", e);
+        document.getElementById("wxCityCards").innerHTML = '<p class="muted">Failed to load current conditions. Open the tab again to retry.</p>';
+        document.getElementById("wxForecastStrip").innerHTML = '<p class="muted">Failed to load forecast.</p>';
+        document.getElementById("wxGeoList").innerHTML = '<p class="muted">Failed to load geography zones.</p>';
+        document.getElementById("wxMonsoonPanel").innerHTML = '<p class="muted">Failed to load monsoon data.</p>';
+        document.getElementById("wxAlertList").innerHTML = '<p class="muted">Failed to load severe weather alerts.</p>';
     }
 }
 
@@ -1829,7 +1929,7 @@ function renderWeeklyForecast(forecast) {
 
 function renderForecastChart(forecast) {
     const ctx = document.getElementById("wxForecastChart");
-    if (!ctx || !forecast) return;
+    if (!ctx || !forecast || typeof Chart === "undefined") return;
     new Chart(ctx, {
         type: "line",
         data: {
@@ -1872,7 +1972,7 @@ function renderForecastChart(forecast) {
 
 function renderHistoricalChart(hist) {
     const ctx = document.getElementById("wxHistoricalChart");
-    if (!ctx || !hist) return;
+    if (!ctx || !hist || typeof Chart === "undefined") return;
     new Chart(ctx, {
         type: "bar",
         data: {
@@ -1922,6 +2022,37 @@ function renderHistoricalChart(hist) {
 }
 
 function renderGeoZones(zones) {
+    const el = document.getElementById("wxGeoList");
+    if (!zones || !zones.length) {
+        if (el) el.innerHTML = '<p class="muted">No geography data</p>';
+        return;
+    }
+
+    const statusColorsMap = {
+        "Heat Wave Active": "#ef4444",
+        "Heat Wave â€” Red Alert": "#dc2626",
+        "Extreme Heat": "#fb923c",
+        "Pre-Monsoon Humidity": "#facc15",
+        "Hot & Humid": "#fb923c",
+        "Heavy Rain Active": "#3b82f6",
+        "Snowmelt + Warming": "#a78bfa",
+    };
+
+    if (typeof L === "undefined") {
+        el.innerHTML = zones.map(z => {
+            const color = statusColorsMap[z.current_status] || "#94a3b8";
+            return `<div class="wx-geo-item">
+                <span class="wx-geo-dot" style="background:${color}"></span>
+                <div class="wx-geo-info">
+                    <strong>${z.zone}</strong>
+                    <span class="muted">${z.climate} â€” ${z.current_status}</span>
+                </div>
+                <span class="wx-geo-risk">${z.key_risk}</span>
+            </div>`;
+        }).join("");
+        return;
+    }
+
     // Init Leaflet map
     if (!wxGeoMap) {
         wxGeoMap = L.map("wxGeoMap").setView([22.5, 79], 4.4);
@@ -1932,7 +2063,7 @@ function renderGeoZones(zones) {
 
     if (!zones || !zones.length) return;
 
-    const statusColors = {
+    const statusColorsMap2 = {
         "Heat Wave Active": "#ef4444",
         "Heat Wave — Red Alert": "#dc2626",
         "Extreme Heat": "#fb923c",
@@ -1943,7 +2074,7 @@ function renderGeoZones(zones) {
     };
 
     zones.forEach(z => {
-        const color = statusColors[z.current_status] || "#94a3b8";
+        const color = statusColorsMap[z.current_status] || "#94a3b8";
         L.circleMarker([z.lat, z.lon], {
             radius: 14, fillColor: color, color: "#fff", weight: 1, fillOpacity: 0.7,
         }).addTo(wxGeoMap).bindPopup(`
@@ -1956,9 +2087,9 @@ function renderGeoZones(zones) {
     });
 
     // Zone list below map
-    const el = document.getElementById("wxGeoList");
-    el.innerHTML = zones.map(z => {
-        const color = statusColors[z.current_status] || "#94a3b8";
+    const geoListEl = document.getElementById("wxGeoList");
+    geoListEl.innerHTML = zones.map(z => {
+        const color = statusColorsMap[z.current_status] || "#94a3b8";
         return `<div class="wx-geo-item">
             <span class="wx-geo-dot" style="background:${color}"></span>
             <div class="wx-geo-info">
@@ -2041,6 +2172,48 @@ let askMeRecorder = null;
 let askMeAudioChunks = [];
 let askMeTTSEnabled = true;
 
+const ASKME_LANGUAGE_NAMES = {
+    "auto": "Auto Detect",
+    "en-IN": "English",
+    "hi-IN": "Hindi",
+    "bn-IN": "Bengali",
+    "ta-IN": "Tamil",
+    "te-IN": "Telugu",
+    "mr-IN": "Marathi",
+    "gu-IN": "Gujarati",
+    "kn-IN": "Kannada",
+    "ml-IN": "Malayalam",
+    "pa-IN": "Punjabi",
+    "od-IN": "Odia",
+    "as-IN": "Assamese",
+    "ur-IN": "Urdu",
+    "mai-IN": "Maithili",
+    "sa-IN": "Sanskrit",
+    "ne-IN": "Nepali",
+    "sd-IN": "Sindhi",
+    "ks-IN": "Kashmiri",
+    "doi-IN": "Dogri",
+    "kok-IN": "Konkani",
+    "mni-IN": "Manipuri",
+    "sat-IN": "Santali",
+    "bo-IN": "Bodo",
+};
+
+function askMeLanguageName(code) {
+    return ASKME_LANGUAGE_NAMES[code] || code || "Unknown";
+}
+
+function updateAskMeStatus(modeText, detectedCode) {
+    const modeEl = document.getElementById("askMeModeLabel");
+    const langEl = document.getElementById("askMeDetectedLang");
+    if (modeEl && modeText) modeEl.textContent = modeText;
+    if (langEl) langEl.textContent = askMeLanguageName(detectedCode);
+}
+
+function askMeDetectionChip(code, prefix = "Detected") {
+    return `<div class="askme-detected-chip"><span>${prefix}</span><span>${askMeLanguageName(code)}</span></div>`;
+}
+
 function toggleAskMePanel() {
     const panel = document.getElementById("askMePanel");
     const fab = document.getElementById("askMeFab");
@@ -2048,6 +2221,7 @@ function toggleAskMePanel() {
     panel.classList.toggle("hidden", !askMePanelOpen);
     fab.classList.toggle("askme-fab-active", askMePanelOpen);
     if (askMePanelOpen) {
+        updateAskMeStatus(askMeTTSEnabled ? "Text + Voice" : "Text Only", document.getElementById("askMeLang")?.value || "auto");
         setTimeout(() => document.getElementById("askMeInput").focus(), 200);
     }
 }
@@ -2056,6 +2230,7 @@ function toggleAskMeTTS() {
     askMeTTSEnabled = !askMeTTSEnabled;
     const btn = document.getElementById("askMeTtsToggle");
     btn.classList.toggle("active", askMeTTSEnabled);
+    updateAskMeStatus(askMeTTSEnabled ? "Text + Voice" : "Text Only", document.getElementById("askMeLang")?.value || "auto");
     btn.textContent = askMeTTSEnabled ? "🔊" : "🔇";
 }
 
@@ -2093,7 +2268,7 @@ async function askMeSend() {
     askMeAddMsg("<span class='askme-typing'>Thinking...</span>", "bot", "askMeThinking");
 
     const lang = document.getElementById("askMeLang").value;
-    const sendLang = lang === "auto" ? "en-IN" : lang;
+    const sendLang = lang;
 
     try {
         const res = await fetch(`${API}/api/text-query`, {
@@ -2105,11 +2280,11 @@ async function askMeSend() {
         askMeRemoveMsg("askMeThinking");
 
         // Show detected language
-        const detectedLang = data.detected_language || sendLang;
-        const display = (lang === "auto" || lang === "en-IN") ? data.response_english : (data.response_translated || data.response_english);
+        const detectedLang = data.detected_language || (lang === "auto" ? "en-IN" : sendLang);
+        const display = (detectedLang === "en-IN" && (lang === "auto" || lang === "en-IN")) ? data.response_english : (data.response_translated || data.response_english);
         const langLabel = detectedLang !== "en-IN" ? ` <span class="askme-lang-tag">${detectedLang}</span>` : "";
-
-        askMeAddMsg(display + langLabel, "bot");
+        updateAskMeStatus(askMeTTSEnabled ? "Text + Voice" : "Text Only", detectedLang);
+        askMeAddMsg(display + langLabel + askMeDetectionChip(detectedLang), "bot");
 
         if (data.sector) {
             askMeAddMsg(`📌 Sector: <strong>${data.sector}</strong>`, "bot");
@@ -2167,20 +2342,36 @@ async function askMeSendVoice() {
     const blob = new Blob(askMeAudioChunks, { type: "audio/webm" });
     const formData = new FormData();
     formData.append("audio", blob, "askme_recording.webm");
+    formData.append("language_code", document.getElementById("askMeLang")?.value || "auto");
 
     askMeAddMsg("🎤 <em>[Voice message]</em>", "user");
     askMeAddMsg("<span class='askme-typing'>Processing voice input...</span>", "bot", "askMeThinking");
 
     try {
-        const res = await fetch(`${API}/api/voice-query`, {
+        // Create a timeout promise
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Request timeout: Server took too long to respond")), 30000)
+        );
+        
+        const fetchPromise = fetch(`${API}/api/voice-query`, {
             method: "POST",
             body: formData,
         });
+        
+        const res = await Promise.race([fetchPromise, timeoutPromise]);
+        
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.detail || "Server error: " + res.status);
+        }
+        
         const data = await res.json();
         askMeRemoveMsg("askMeThinking");
 
         const detectedLang = data.detected_language || "en-IN";
-        askMeAddMsg(`🗣️ You said (<span class="askme-lang-tag">${detectedLang}</span>): "<em>${data.user_text}</em>"`, "bot");
+        updateAskMeStatus(askMeTTSEnabled ? "Voice Reply On" : "Voice Reply Off", detectedLang);
+        askMeAddMsg(askMeDetectionChip(detectedLang, "Heard"), "user");
+        askMeAddMsg(`🎤 You: "${data.user_text}"`, "user");
 
         // Emergency check
         if ((typeof detectEmergency === "function" && (detectEmergency(data.user_text) || detectEmergency(data.user_text_english || ""))) || data.emergency_detected) {
@@ -2190,12 +2381,8 @@ async function askMeSendVoice() {
             return;
         }
 
-        const lang = document.getElementById("askMeLang").value;
-        const display = (lang === "auto" || lang === "en-IN") ? data.response_english : (data.response_translated || data.response_english);
-        askMeAddMsg(display, "bot");
-
-        if (data.sector) {
-            askMeAddMsg(`📌 Sector: <strong>${data.sector}</strong>`, "bot");
+        if (data.response_translated || data.response_english) {
+            askMeAddMsg((data.response_translated || data.response_english) + askMeDetectionChip(detectedLang, "Reply"), "bot");
         }
 
         // Play audio response
@@ -2206,7 +2393,18 @@ async function askMeSendVoice() {
         status.classList.add("hidden");
     } catch (err) {
         askMeRemoveMsg("askMeThinking");
-        askMeAddMsg("❌ Could not process voice query.", "bot");
+        console.error("AskMe voice query error:", err);
+        
+        let errorMsg = "❌ Could not process voice query.";
+        if (err.message.includes("timeout")) {
+            errorMsg = "❌ Request timeout. Server is not responding. Please try again.";
+        } else if (err.message.includes("Network")) {
+            errorMsg = "❌ Network error. Please check your connection.";
+        } else if (err.message) {
+            errorMsg = "❌ Error: " + err.message;
+        }
+        
+        askMeAddMsg(errorMsg, "bot");
         status.classList.add("hidden");
     }
 }
@@ -2239,7 +2437,9 @@ function askMePlayAudio(base64Audio) {
 async function loadWeatherReco() {
     try {
         const res = await fetch(`${API}/api/weather/recommendations`);
+        if (!res.ok) throw new Error(`Weather recommendations request failed: ${res.status}`);
         const data = await res.json();
+        weatherRecoLoaded = true;
         const states = data.states || [];
         const summary = data.national_summary || {};
         const sectors = data.sector_matrix || [];
@@ -2315,6 +2515,7 @@ async function loadWeatherReco() {
         }
 
     } catch (err) {
+        weatherRecoLoaded = false;
         console.error('Weather Reco load error:', err);
     }
 }
@@ -2327,11 +2528,14 @@ function expandStateCard(card) {
 async function loadIncidentsDashboard() {
     try {
         const res = await fetch(`${API}/api/incidents`);
+        if (!res.ok) throw new Error(`Incidents request failed: ${res.status}`);
         const data = await res.json();
+        incidentsLoaded = true;
         allIncidents = data.incidents || [];
         renderIncidentStats(data.stats);
         renderIncidentList(allIncidents);
     } catch (e) {
+        incidentsLoaded = false;
         console.error("Failed to load incidents:", e);
         document.getElementById("incidentList").innerHTML = '<p class="muted">Failed to load incidents.</p>';
     }
@@ -2411,7 +2615,6 @@ async function submitIncident(e) {
         // Reload list
         incidentsLoaded = false;
         loadIncidentsDashboard();
-        incidentsLoaded = true;
     } catch (err) {
         statusDiv.className = "inc-form-status error";
         statusDiv.textContent = "❌ Failed to submit incident. Please try again.";

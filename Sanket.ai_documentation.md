@@ -6,15 +6,15 @@
 
 ## Overview
 
-The **Public Intelligence System** is a web application that gives government officials a single command-center to monitor agriculture, disasters, public health, weather, security threats, live events (protests, wars, pandemics), and citizen-reported incidents — all queryable by voice or text in **11 Indian languages**. It uses **Sarvam AI** for speech, translation, and reasoning, and **ChromaDB RAG** to ground every answer in real intelligence data.
+The **Public Intelligence System** is a web application that gives government officials a single command-center to monitor agriculture, disasters, public health, weather, weather advisories, security threats, live events (protests, wars, pandemics), and citizen-reported incidents — all queryable by voice or text in **11 Indian languages**. It uses **Sarvam AI** for speech recognition, translation, multilingual response generation, and text-to-speech, while **ChromaDB RAG** grounds answers in real intelligence data.
 
 **At a Glance:**
 
 | Metric | Value |
 |--------|-------|
-| Dashboards | 9 full-featured dashboards |
+| Dashboards | 10 full-featured dashboards |
 | API Endpoints | 49 REST endpoints |
-| Languages Supported | 11 Indian languages + auto-detect |
+| Languages Supported | 11 Indian languages + auto-detect + selected reply language |
 | AI Models | Sarvam Saaras v3 (STT), Bulbul v2 (TTS), Mayura v1 (Translation), sarvam-30b/105b (LLM) |
 | External API Keys | 1 (Sarvam AI only) |
 | Maps | OpenStreetMap + CARTO (free, no key) |
@@ -68,7 +68,7 @@ The primary monitoring screen for officials.
 AI-powered conversational Q&A.
 
 - **Text chat**: Type questions about crop status, flood risk, disease outbreaks, protests — get grounded answers with source citations
-- **Voice input**: Record voice in any Indian language; system transcribes, translates, reasons, and responds with audio
+- **Voice input**: Record voice in any Indian language; system transcribes with Sarvam, reasons over RAG data, translates if needed, and returns spoken audio in the selected reply language
 - **Knowledge Base stats**: Document count, 4 sectors, 11 languages
 - RAG-grounded — every answer cites real intelligence data
 
@@ -121,7 +121,7 @@ Disease surveillance and health infrastructure monitoring.
 - **Hospital Capacity** — 6 regions showing total beds, ICU beds, ventilators, occupancy rates with color-coded load indicators
 - **Public Safety Alerts** — Active safety alerts with severity and recommended actions
 
-### Dashboard 8 — Weather Forecasting
+### Dashboard 8 — Weather
 
 Multi-layer weather intelligence.
 
@@ -153,15 +153,24 @@ Government issue tracking system for citizens and officials.
 - **Stats bar** — Total, Submitted, Under Review, In Progress, Resolved counts
 - **Update timeline** — Each incident tracks status changes and notes
 
+### Dashboard 10 — Weather Advisory & Impact Desk
+
+Decision-oriented weather operations layer.
+
+- **State Advisory Grid** — State-wise guidance cards focused on action, not just conditions
+- **National Summary** — Quick national weather risk snapshot with advisory framing
+- **Sector-wise Impact Matrix** — Weather effects on agriculture, health, infrastructure, and transport
+- **Regional Advisory** — Practical do's and don'ts for current and short-range outlook conditions
+
 ### Global — Ask Me Panel (Floating)
 
 Available on every dashboard.
 
 - Floating action button (bottom-right) opens sliding chat panel
 - **Text chat** with Sarvam AI LLM — ask anything about the intelligence data
-- **Voice recording** — Record in any language, get voice + text response
+- **Voice recording** — Record in any supported language and receive spoken output back through Sarvam TTS
 - **TTS toggle** — Enable/disable spoken responses
-- **11-language selector** + Auto-detect mode
+- **11-language selector** + Auto-detect mode for multilingual input and selected-language reply output
 - Uses RAG to answer from the knowledge base
 
 ---
@@ -173,7 +182,7 @@ Available on every dashboard.
 | Backend | **FastAPI** (Python 3.10+) | Async REST API server |
 | AI Engine | **Sarvam AI** | STT (Saaras v3), TTS (Bulbul v2), Translation (Mayura v1), LLM (sarvam-30b/105b) |
 | Vector DB | **ChromaDB 0.5.0** | RAG knowledge base with persistent storage |
-| Embeddings | **Sentence Transformers** (all-MiniLM-L6-v2) | Semantic document embeddings |
+| Embeddings | **Sentence Transformers** (all-MiniLM-L6-v2) with offline-safe fallback | Semantic document embeddings when available; keyword fallback for offline/demo startup |
 | Scheduler | **APScheduler** | Hourly proactive alert analysis |
 | Maps | **Leaflet.js 1.9.4** | Interactive maps (OpenStreetMap + CARTO tiles — free, no key) |
 | Charts | **Chart.js 4.4.0** | Data visualization (sector, risk, weather, forecast charts) |
@@ -235,7 +244,7 @@ Available on every dashboard.
 ### Voice & Text Q&A
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/voice-query` | Audio in → transcription + AI response + audio out |
+| `POST` | `/api/voice-query` | Audio in → Sarvam STT + multilingual AI response + audio out |
 | `POST` | `/api/text-query` | Text query in any language → AI response |
 | `POST` | `/api/translate` | Translate text between Indian languages |
 | `POST` | `/api/tts` | Text-to-speech conversion |
@@ -282,12 +291,13 @@ Available on every dashboard.
 ### Weather (6 endpoints)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/weather/dashboard` | Full weather dashboard |
+| `GET` | `/api/weather/dashboard` | Full operational weather dashboard |
 | `GET` | `/api/weather/current` | Current conditions (8 cities) |
 | `GET` | `/api/weather/forecast` | 7-day forecast |
 | `GET` | `/api/weather/historical` | 12-month historical trends |
 | `GET` | `/api/weather/alerts` | Severe weather alerts |
 | `GET` | `/api/weather/monsoon` | Monsoon prediction data |
+| `GET` | `/api/weather/recommendations` | Weather advisory and impact dashboard data |
 
 ### Incidents (4 endpoints)
 | Method | Endpoint | Description |
@@ -351,7 +361,7 @@ Available on every dashboard.
 | 10 | Punjabi | pa-IN | ✅ | ✅ | ✅ | ✅ |
 | 11 | English | en-IN | ✅ | ✅ | ✅ | ✅ |
 
-Auto-detect mode available — system identifies the spoken language automatically.
+Auto-detect mode available — system identifies the spoken language automatically, while the frontend can also pass a preferred reply language for translated text and spoken audio output.
 
 ---
 
@@ -363,17 +373,17 @@ public-intelligence-system/
 ├── app/
 │   ├── __init__.py
 │   ├── config.py            # Environment variables, model IDs
-│   ├── main.py              # FastAPI server — 49 endpoints, all data stores
-│   ├── voice_pipeline.py    # STT → Translate → RAG → LLM → Translate → TTS
-│   ├── rag_engine.py        # ChromaDB vector store + semantic retrieval
+│   ├── main.py              # FastAPI server — dashboards, voice route, API endpoints
+│   ├── voice_pipeline.py    # Sarvam STT → Translate → RAG → LLM → Translate → TTS
+│   ├── rag_engine.py        # ChromaDB vector store + offline-safe semantic/keyword retrieval
 │   ├── alert_engine.py      # Proactive LLM-powered alert analysis (hourly)
 │   ├── sarvam_client.py     # Sarvam AI SDK wrapper (STT, TTS, Translate, LLM)
 │   └── sample_data.py       # 28+ seed documents for RAG knowledge base
 │
 ├── frontend/
-│   ├── index.html           # 9 dashboard pages + sidebar + Ask Me panel
-│   ├── app.js               # All frontend logic (~2,100 lines)
-│   └── style.css            # Dark-themed responsive UI (~1,500 lines)
+│   ├── index.html           # 10 dashboard pages + command-center shell + Ask Me panel
+│   ├── app.js               # Frontend logic, dashboard switching, voice flows, advisory copy
+│   └── style.css            # Dark-themed responsive UI + command-center shell
 │
 ├── requirements.txt         # Python dependencies
 └── APPROACH_DOCUMENT.md     # This document
@@ -415,15 +425,15 @@ http://localhost:8000
 
 | Feature | Description |
 |---------|-------------|
-| **9 Dashboards** | Alerts, Intelligence, Map, Analytics, Emergency, Agriculture, Health, Weather, Incidents |
+| **10 Dashboards** | Alerts, Intelligence, Map, Analytics, Emergency, Agriculture, Health, Weather, Incidents, Advisory |
 | **Live Events Tracker** | Real-time monitoring of protests, wars, pandemics, strikes, disasters, Naxal activity across India |
 | **AI Chat (Ask Me)** | Floating panel on every page — text or voice Q&A in 11 languages, RAG-grounded |
-| **Voice Pipeline** | Full speech-to-speech: Speak in Hindi → get answer in Hindi audio |
+| **Voice Pipeline** | Full multilingual speech-to-speech: speak in Hindi/Tamil/etc. → get translated or matched audio reply back via Sarvam |
 | **Proactive Alerts** | LLM scans all sectors hourly to detect escalating risks before they happen |
 | **Emergency SOS** | One-tap SOS with live GPS tracking, emergency contacts, keyword detection |
 | **Incident Reporting** | Citizens report issues → auto-assigned to correct govt department → tracked to resolution |
 | **Emergency Keyword Detection** | 60+ keywords (Hindi/English/Hinglish) trigger automatic SOS from voice/text |
-| **Multilingual** | 11 Indian languages for input, output, translation, and TTS |
+| **Multilingual** | 11 Indian languages for input, translated reasoning, selected-language reply text, and TTS |
 | **Cross-Sector AI** | Connects agriculture + disaster + health + security data to find compound risks |
 | **Interactive Maps** | Leaflet.js with OpenStreetMap — free, no API key |
 | **RAG-Grounded** | Every AI answer cites real intelligence documents — no hallucination |

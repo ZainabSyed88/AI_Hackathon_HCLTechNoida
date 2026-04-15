@@ -17,12 +17,18 @@
     <header class="header">
         <div class="header-left">
             <div class="logo">🛡️</div>
-            <div>
+            <div class="brand-block">
+                <div class="brand-kicker">National Public Intelligence Grid</div>
                 <h1>Sanket.AI</h1>
                 <p class="subtitle">AI-Powered National Security & Civilian Intelligence Platform</p>
             </div>
         </div>
         <div class="header-right">
+            <div class="command-search-shell">
+                <span class="command-search-icon">Search</span>
+                <input type="text" class="command-search-input" placeholder="Search districts, sectors, alerts, or ask AI">
+                <button class="command-search-btn" onclick="toggleAskMePanel()">Open Assistant</button>
+            </div>
             <select id="languageSelect" class="lang-select">
                 <option value="en-IN">English</option>
                 <option value="hi-IN">हिन्दी (Hindi)</option>
@@ -90,7 +96,7 @@
                 </button>
                 <button class="nav-item" data-dashboard="weather-reco" onclick="switchDashboard('weather-reco')">
                     <span class="nav-icon">📡</span>
-                    <span class="nav-label">Forecast</span>
+                    <span class="nav-label">Advisory</span>
                 </button>
                 <button class="nav-item" data-dashboard="incidents" onclick="switchDashboard('incidents')">
                     <span class="nav-icon">📋</span>
@@ -101,6 +107,51 @@
 
         <!-- Dashboard Content Area -->
         <main class="dashboard-content">
+            <section class="ops-hero">
+                <div class="ops-hero-main">
+                    <div class="ops-hero-copy">
+                        <span class="ops-kicker">Command Center</span>
+                        <h2>National situation awareness across alerts, intelligence, health, weather, and incidents</h2>
+                        <p>Jump into the most important sectors, keep a live eye on system activity, and route questions straight to the AI copilot.</p>
+                    </div>
+                    <div class="ops-hero-status">
+                        <div class="ops-status-card">
+                            <span class="ops-status-label">Network Status</span>
+                            <span class="ops-status-value online">All Systems Nominal</span>
+                        </div>
+                        <div class="ops-status-card">
+                            <span class="ops-status-label">Last Intelligence Sweep</span>
+                            <span class="ops-status-value" id="opsLastRefresh">Waiting for first update</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="ops-metrics">
+                    <div class="ops-metric critical">
+                        <span class="ops-metric-value" id="shellCriticalCount">0</span>
+                        <span class="ops-metric-label">Critical Alerts</span>
+                    </div>
+                    <div class="ops-metric">
+                        <span class="ops-metric-value" id="shellAlertCount">0</span>
+                        <span class="ops-metric-label">Total Active Alerts</span>
+                    </div>
+                    <div class="ops-metric">
+                        <span class="ops-metric-value" id="shellLiveCount">0</span>
+                        <span class="ops-metric-label">Live Events</span>
+                    </div>
+                    <div class="ops-metric">
+                        <span class="ops-metric-value" id="shellHealthCount">0</span>
+                        <span class="ops-metric-label">Health Signals</span>
+                    </div>
+                </div>
+                <div class="ops-actions">
+                    <button class="ops-action-btn" onclick="switchDashboard('alerts')">Open Alerts</button>
+                    <button class="ops-action-btn" onclick="switchDashboard('intelligence')">Open Intelligence</button>
+                    <button class="ops-action-btn" onclick="switchDashboard('health')">Open Health</button>
+                    <button class="ops-action-btn" onclick="switchDashboard('weather')">Open Weather</button>
+                    <button class="ops-action-btn" onclick="switchDashboard('weather-reco')">Open Advisory</button>
+                    <button class="ops-action-btn primary" onclick="toggleAskMePanel()">Launch Ask Me</button>
+                </div>
+            </section>
 
             <!-- ===================== DASHBOARD 1: ALERTS ===================== -->
             <div id="dashboard-alerts" class="dashboard-page active">
@@ -965,7 +1016,7 @@
 
         </div>
 
-        <!-- ========== DASHBOARD 10: WEATHER FORECASTING RECOMMENDATIONS ========== -->
+        <!-- ========== DASHBOARD 10: WEATHER ADVISORY & IMPACTS ========== -->
         <div id="dashboard-weather-reco" class="dashboard-page" style="display:none;">
 
             <!-- Header -->
@@ -1009,6 +1060,7 @@
     <button id="askMeFab" class="askme-fab" onclick="toggleAskMePanel()">
         <span class="askme-fab-icon">💬</span>
         <span class="askme-fab-label">Ask Me</span>
+        <span class="askme-fab-pulse"></span>
     </button>
 
     <div id="askMePanel" class="askme-panel hidden">
@@ -1024,7 +1076,7 @@
         </div>
 
         <div class="askme-lang-bar">
-            <select id="askMeLang" class="askme-lang-select">
+            <select id="askMeLang" class="askme-lang-select" onchange="updateAskMeStatus(askMeTTSEnabled ? 'Text + Voice' : 'Text Only', this.value)">
                 <option value="auto">🌐 Auto-Detect</option>
                 <option value="en-IN">English</option>
                 <option value="hi-IN">हिन्दी (Hindi)</option>
@@ -1051,6 +1103,17 @@
                 <option value="bo-IN">བོད་སྐད (Bodo)</option>
             </select>
             <button id="askMeTtsToggle" class="askme-tts-btn active" onclick="toggleAskMeTTS()" title="Voice replies on/off">🔊</button>
+        </div>
+
+        <div class="askme-status-strip">
+            <div class="askme-status-pill">
+                <span class="askme-status-label">Mode</span>
+                <span class="askme-status-value" id="askMeModeLabel">Text + Voice</span>
+            </div>
+            <div class="askme-status-pill">
+                <span class="askme-status-label">Detected</span>
+                <span class="askme-status-value" id="askMeDetectedLang">Waiting</span>
+            </div>
         </div>
 
         <div id="askMeMessages" class="askme-messages">
