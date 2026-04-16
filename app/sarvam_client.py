@@ -130,6 +130,7 @@ def chat_completion(
 ) -> str:
     """
     Chat with Sarvam LLM. Messages in OpenAI format.
+    Returns response text with source citations.
     """
     if DEMO_MODE:
         # Generate a demo response based on the user query
@@ -148,6 +149,8 @@ def chat_completion(
 
 ✅ **Recommendations:**
 - Continue regular monitoring of water levels
+
+*Sources: Kharif Rainfall Report, District Agriculture Data*"
 - Apply supplemental irrigation in drought-affected areas
 - Risk Level: MODERATE
 

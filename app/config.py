@@ -1,10 +1,17 @@
 import os
+import sys
 from dotenv import load_dotenv
 
 load_dotenv()
 
-SARVAM_API_KEY = os.getenv("SARVAM_API_KEY", "")
+SARVAM_API_KEY = os.getenv("SARVAM_API_KEY", "").strip()
 SARVAM_BASE_URL = "https://api.sarvam.ai"
+
+# Warn if API key is not configured
+if not SARVAM_API_KEY or SARVAM_API_KEY == "your_sarvam_api_key_here":
+    print("⚠️  WARNING: SARVAM_API_KEY not configured. Set it in .env file.", file=sys.stderr)
+    print("   Export: export SARVAM_API_KEY=<your_key>", file=sys.stderr)
+    print("   Or create .env file with: SARVAM_API_KEY=<your_key>", file=sys.stderr)
 
 # Model IDs
 STT_MODEL = "saaras:v3"

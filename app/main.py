@@ -1803,36 +1803,60 @@ async def dashboard():
 
 @app.post("/api/voice-query")
 async def voice_query(audio: UploadFile = File(...), language_code: str = Form("auto")):
-    """Full voice pipeline: audio in → audio + text out"""
+    """
+    Full voice pipeline: audio in → STT → RAG → LLM → TTS → audio + text out
+    
+    Returns:
+    - user_text: What the user said (in their language)
+    - user_text_english: What they said in English
+    - detected_language: Language code of input audio
+    - response_english: AI response in English
+    - response_translated: AI response in user's language
+    - response_audio_base64: Audio response (base64 encoded)
+    - sector: Detected intelligence sector
+    - emergency_detected: Whether emergency keywords detected
+    """
     try:
         audio_bytes = await audio.read()
         if not audio_bytes:
-            raise HTTPException(status_code=400, detail="Empty audio file")
-
+            raise HTTPException(status_code=400, detail="Empty audio file. Please record voice and try again.")
+        
+        print(f"🎤 Voice query received: {len(audio_bytes)} bytes, language: {language_code}", file=__import__('sys').stderr)
+        
+        # Process voice query through full pipeline
         result = process_voice_query(audio_bytes, preferred_language=language_code)
-
-        # Encode audio response as base64 for JSON transport
+        
+        print(f"✅ Voice query processed successfully", file=__import__('sys').stderr)
+        
+        # Ensure audio response exists
         audio_b64 = ""
         if result.get("response_audio"):
-            audio_b64 = base64.b64encode(result["response_audio"]).decode("utf-8")
+            try:
+                audio_b64 = base64.b64encode(result["response_audio"]).decode("utf-8")
+                print(f"🔊 TTS audio generated: {len(result['response_audio'])} bytes", file=__import__('sys').stderr)
+            except Exception as tts_err:
+                print(f"⚠️  TTS encoding error: {tts_err}", file=__import__('sys').stderr)
+        else:
+            print(f"⚠️  No audio response generated from TTS", file=__import__('sys').stderr)
 
         return {
-            "user_text": result["user_text"],
-            "user_text_english": result["user_text_english"],
-            "detected_language": result["detected_language"],
-            "response_english": result["response_english"],
-            "response_translated": result["response_translated"],
+            "user_text": result.get("user_text", ""),
+            "user_text_english": result.get("user_text_english", ""),
+            "detected_language": result.get("detected_language", "en-IN"),
+            "response_english": result.get("response_english", "No response generated"),
+            "response_translated": result.get("response_translated", ""),
             "response_audio_base64": audio_b64,
-            "sector": result["sector"],
+            "sector": result.get("sector", "general"),
             "emergency_detected": result.get("emergency_detected", False),
         }
     except HTTPException:
         raise
     except Exception as e:
         import traceback
-        print(f"Voice query error: {e}", file=__import__('sys').stderr)
+        error_msg = f"Voice query failed: {str(e)[:200]}"
+        print(f"❌ {error_msg}", file=__import__('sys').stderr)
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Voice processing failed: {str(e)[:200]}")
+        raise HTTPException(status_code=500, detail=error_msg)
 
 
 # ---------- Text Q&A ----------

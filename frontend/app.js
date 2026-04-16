@@ -459,15 +459,18 @@ async function sendVoiceQuery() {
     const blob = new Blob(audioChunks, { type: "audio/webm" });
     const formData = new FormData();
     formData.append("audio", blob, "recording.webm");
-    formData.append("language_code", document.getElementById("languageSelect")?.value || "auto");
+    
+    const selectedLanguage = document.getElementById("languageSelect")?.value || "auto";
+    formData.append("language_code", selectedLanguage);
 
     addMessage("🎤 [Voice message sent]", "user");
-    addMessage("Processing voice input...", "bot", "thinkingMsg");
+    addMessage("🔄 Processing voice (STT → RAG → LLM → TTS)...", "bot", "thinkingMsg");
+    status.textContent = "🔄 Processing voice...";
 
     try {
-        // Create a timeout promise
+        // Create a timeout promise (30 seconds)
         const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("Request timeout: Server took too long to respond")), 30000)
+            setTimeout(() => reject(new Error("Voice processing timeout: Server took >30 seconds")), 30000)
         );
         
         const fetchPromise = fetch(`${API}/api/voice-query`, {
@@ -476,13 +479,21 @@ async function sendVoiceQuery() {
         });
         
         const res = await Promise.race([fetchPromise, timeoutPromise]);
-        const data = await res.json();
         
         if (!res.ok) {
-            throw new Error(data.detail || "Server error: " + res.status);
+            const errorData = await res.json().catch(() => ({ detail: "Unknown error" }));
+            throw new Error(errorData.detail || `Server error: ${res.status}`);
         }
         
+        const data = await res.json();
         removeMessage("thinkingMsg");
+
+        console.log("Voice response:", {
+            user_text: data.user_text,
+            detected_language: data.detected_language,
+            response_length: data.response_translated?.length || 0,
+            audio_generated: !!data.response_audio_base64
+        });
 
         // Check if voice input was an emergency
         if (detectEmergency(data.user_text) || detectEmergency(data.user_text_english || "") || data.emergency_detected) {
@@ -491,12 +502,48 @@ async function sendVoiceQuery() {
             return;
         }
 
-        // Only show what user said, then play audio response (no text response displayed)
-        addMessage(`🎤 You: "${data.user_text}"`, "user");
+        // Show what user said
+        addMessage(`🎤 You (${data.detected_language}): "${data.user_text}"`, "user");
 
-        if (data.response_audio_base64) {
-            playAudio(data.response_audio_base64);
+        // Show AI response text
+        if (data.response_translated) {
+            addMessage(`🤖 Response:\n\n${data.response_translated}`, "bot");
+        } else if (data.response_english) {
+            addMessage(`🤖 Response:\n\n${data.response_english}`, "bot");
         }
+
+        // Play audio response if available
+        if (data.response_audio_base64) {
+            status.textContent = "🔊 Playing audio response...";
+            playAudio(data.response_audio_base64);
+            setTimeout(() => {
+                status.textContent = "✅ Voice response ready";
+                setTimeout(() => status.classList.add("hidden"), 2000);
+            }, 1000);
+        } else {
+            status.textContent = "⚠️ No audio response (check Sarvam API key)";
+            addMessage("⚠️ Audio response not available. Check if SARVAM_API_KEY is configured.", "bot");
+        }
+
+    } catch (error) {
+        removeMessage("thinkingMsg");
+        let errorMsg = error.message;
+        
+        // Better error messages
+        if (errorMsg.includes("Failed to fetch")) {
+            errorMsg = "❌ Server connection failed. Is FastAPI running on http://localhost:8000?";
+        } else if (errorMsg.includes("timeout")) {
+            errorMsg = "❌ Voice processing timeout (>30 seconds). Check Sarvam API key and network.";
+        } else if (errorMsg.includes("not configured")) {
+            errorMsg = "❌ SARVAM_API_KEY not configured.\n\n👉 Setup: Create .env file with:\nSARVAM_API_KEY=your_key\n\nThen restart server.";
+        }
+        
+        console.error("Voice query error:", error);
+        addMessage(errorMsg, "bot");
+        status.textContent = "❌ Voice processing failed";
+        status.classList.remove("hidden");
+    }
+}
 
         status.classList.add("hidden");
     } catch (err) {
@@ -518,13 +565,36 @@ async function sendVoiceQuery() {
 }
 
 function playAudio(base64Audio) {
-    const bytes = atob(base64Audio);
-    const arr = new Uint8Array(bytes.length);
-    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
-    const blob = new Blob([arr], { type: "audio/wav" });
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    audio.play();
+    if (!base64Audio || base64Audio.length === 0) {
+        console.warn("⚠️ Empty audio data - cannot play");
+        return;
+    }
+    
+    try {
+        // Decode base64 audio
+        const bytes = atob(base64Audio);
+        const arr = new Uint8Array(bytes.length);
+        for (let i = 0; i < bytes.length; i++) {
+            arr[i] = bytes.charCodeAt(i);
+        }
+        
+        // Create blob and play
+        const blob = new Blob([arr], { type: "audio/wav" });
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        
+        audio.onplay = () => console.log("🔊 Audio playback started");
+        audio.onended = () => console.log("✅ Audio playback ended");
+        audio.onerror = (e) => console.error("❌ Audio playback error:", e);
+        
+        audio.play().catch(e => {
+            console.error("❌ Audio play error:", e.message);
+            addMessage(`⚠️ Audio playback blocked: ${e.message}`, "bot");
+        });
+    } catch (e) {
+        console.error("❌ Audio decode error:", e);
+        addMessage(`⚠️ Could not decode audio: ${e.message}`, "bot");
+    }
 }
 
 // =================== Chat UI Helpers ===================
@@ -2424,13 +2494,27 @@ async function askMeTTS(text, langCode) {
 }
 
 function askMePlayAudio(base64Audio) {
-    const bytes = atob(base64Audio);
-    const arr = new Uint8Array(bytes.length);
-    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
-    const blob = new Blob([arr], { type: "audio/wav" });
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    audio.play().catch(e => console.warn("Audio play blocked:", e));
+    if (!base64Audio || base64Audio.length === 0) {
+        console.warn("⚠️ Empty audio data - cannot play");
+        return;
+    }
+    
+    try {
+        const bytes = atob(base64Audio);
+        const arr = new Uint8Array(bytes.length);
+        for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+        const blob = new Blob([arr], { type: "audio/wav" });
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        
+        audio.onplay = () => console.log("🔊 Ask Me audio playback started");
+        audio.onended = () => console.log("✅ Ask Me audio playback ended");
+        audio.onerror = (e) => console.error("❌ Ask Me audio error:", e);
+        
+        audio.play().catch(e => console.warn("Audio play blocked:", e));
+    } catch (e) {
+        console.error("❌ Ask Me audio decode error:", e);
+    }
 }
 
 // =================== WEATHER FORECASTING RECOMMENDATIONS ===================
